@@ -100,7 +100,7 @@ function Home({ user, onChangePassword }) {
     <div className="card">
       <h2>Xin chào, {user.fullName}</h2>
       <p className="muted">Vai trò: <b>{ROLE_LABEL[user.role]}</b> · Tài khoản: {user.username}</p>
-      <p className="muted">Tài liệu/quy định, báo cáo và phòng thi trực tuyến sẽ được bổ sung ở các bước tiếp theo.</p>
+      <p className="muted">Chọn đề thi bên dưới để bắt đầu; kết quả và căn cứ hiển thị sau khi nộp bài.</p>
       <button className="link" onClick={onChangePassword}><KeyRound size={14} /> Đổi mật khẩu</button>
     </div>
     <MyExams />
@@ -142,6 +142,6 @@ export default function App() {
             : <span>HỆ THỐNG ĐÀO TẠO NỘI BỘ</span>}
     </div>
     {body}
-    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.6</span></footer>
+    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.7</span></footer>
   </main>;
 }

@@ -5,6 +5,7 @@ import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { io as ioClient } from 'socket.io-client';
 
 const DB = process.env.TEST_DATABASE_URL;
 const PORT = 4100 + Math.floor(Math.random() * 500);
@@ -25,10 +26,23 @@ function client() {
     return { status: res.status, body: await res.json().catch(() => ({})) };
   };
   return {
+    cookie: () => cookie,
     get: (p, raw) => call('GET', p, undefined, raw), post: (p, b) => call('POST', p, b ?? {}),
     patch: (p, b) => call('PATCH', p, b), del: p => call('DELETE', p)
   };
 }
+
+const connect = (cookie) => new Promise((resolve, reject) => {
+  const sock = ioClient(`http://127.0.0.1:${PORT}`, { transports: ['websocket'], extraHeaders: cookie ? { Cookie: cookie } : {}, reconnection: false });
+  sock.once('connect', () => resolve(sock));
+  sock.once('connect_error', err => reject(err));
+});
+const emit = (sock, ev, arg) => new Promise(res => sock.emit(ev, arg, res));
+const waitFor = (sock, ev, pred = () => true, ms = 4000) => new Promise((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error(`Hết thời gian chờ sự kiện ${ev}`)), ms);
+  const h = data => { if (pred(data)) { clearTimeout(timer); sock.off(ev, h); resolve(data); } };
+  sock.on(ev, h);
+});
 
 const q = (over = {}) => ({
   topic: 'Thuế', type: 'SINGLE', difficulty: 'EASY', status: 'ACTIVE', content: 'Câu hỏi?',
@@ -212,6 +226,47 @@ test('luồng đầy đủ: RBAC, câu hỏi, nhập CSV, nhóm, giao đề, là
     assert.equal(r.body.items[0].document.url, 'https://example.com/tt78');
     assert.equal(r.body.items[0].reference, 'Điều 5');
     assert.equal((await admin.del(`/documents/${arch.body.document.id}`)).body.document.status, 'ARCHIVED');
+  });
+
+  await t.test('phòng thi trực tiếp: phòng chờ, bắt đầu đồng loạt, giám sát realtime', async () => {
+    await assert.rejects(connect(''), /unauthorized/); // chưa đăng nhập: không kết nối được
+    const live = await admin.post('/exams', { title: 'Phòng live', durationMinutes: 10, questionIds: [ids.s], assignAll: true, live: true });
+    const id = live.body.exam.id;
+    assert.equal((await admin.post(`/exams/${id}/live/start`)).status, 400); // chưa mở thi
+    await admin.patch(`/exams/${id}/status`, { status: 'PUBLISHED' });
+    assert.equal((await e2.post(`/exams/${id}/start`)).status, 409); // phòng chưa bắt đầu
+    assert.equal((await e2.post(`/exams/${id}/live/start`)).status, 403);
+
+    const sMon = await connect(admin.cookie()), sNv = await connect(e2.cookie());
+    try {
+      const mon = await emit(sMon, 'room:monitor', id);
+      assert.equal(mon.room.started, false);
+      assert.deepEqual(mon.online, []);
+      assert.ok((await emit(sNv, 'room:monitor', id)).error); // nhân viên không giám sát được
+
+      const upd = waitFor(sMon, 'room:update', d => d.online.some(u => u.fullName === 'nv2'));
+      const joined = await emit(sNv, 'room:join', id);
+      assert.equal(joined.room.started, false);
+      await upd;
+      assert.ok((await emit(sNv, 'room:join', exam.id)).error); // đề không phải phòng live
+
+      const started = waitFor(sNv, 'room:started');
+      const st = await admin.post(`/exams/${id}/live/start`);
+      assert.equal(st.status, 200);
+      const ev = await started;
+      assert.ok(new Date(ev.endsAt) > new Date());
+      assert.equal((await admin.post(`/exams/${id}/live/start`)).status, 409);
+
+      const run = await e2.post(`/exams/${id}/start`);
+      assert.equal(run.status, 200);
+      const at = await prisma.attempt.findUnique({ where: { id: run.body.attemptId } });
+      assert.equal(at.startedAt.toISOString(), new Date(ev.startedAt).toISOString()); // cùng mốc giờ
+
+      const sub = waitFor(sMon, 'room:update', d => d.submitted.some(u => u.fullName === 'nv2'));
+      const optA = run.body.questions[0].options.find(o => o.text === 'A').id;
+      assert.equal((await e2.post(`/exams/attempts/${run.body.attemptId}/submit`, { answers: { [ids.s]: [optA] } })).status, 200);
+      await sub;
+    } finally { sMon.close(); sNv.close(); }
   });
 
   await t.test('khoá tài khoản làm mất hiệu lực phiên', async () => {

@@ -5,19 +5,13 @@ import { requireAuth, requireRole } from '../auth.js';
 import { audit } from '../audit.js';
 import { toCsv } from '../csv.js';
 import { gradeQuestion, summarize } from '../grading.js';
+import { GRACE_MS, deadline as deadlineAt, visibleTo } from '../access.js';
+import { announceStart, broadcastRoom, roomInfo } from '../realtime.js';
 
 export const examsRouter = Router();
 examsRouter.use(requireAuth);
 
-const GRACE_MS = 30_000; // bù độ trễ mạng khi nộp bài
-// Người dùng được thấy đề nếu đề giao cho tất cả, hoặc cho nhóm của họ, hoặc họ đã có bài làm.
-const visibleTo = userId => ({ OR: [
-  { assignAll: true },
-  { groups: { some: { group: { members: { some: { userId } } } } } },
-  { attempts: { some: { userId } } }
-] });
-
-const deadline = (attempt, exam) => new Date(attempt.startedAt.getTime() + exam.durationMinutes * 60_000);
+const deadline = (attempt, exam) => deadlineAt(attempt.startedAt, exam.durationMinutes);
 
 // ---------- Quản trị: tạo / quản lý đề thi ----------
 const admin = requireRole('ADMIN');
@@ -29,6 +23,7 @@ const examSchema = z.object({
   passPercent: z.number().int().min(1).max(100).default(70),
   questionIds: z.array(z.string()).min(1, 'Chọn ít nhất 1 câu hỏi').max(200),
   assignAll: z.boolean().default(true),
+  live: z.boolean().default(false),
   groupIds: z.array(z.string()).max(100).default([])
 }).refine(d => d.assignAll || d.groupIds.length > 0, { message: 'Chọn ít nhất 1 nhóm hoặc giao cho tất cả', path: ['groupIds'] });
 
@@ -49,7 +44,7 @@ examsRouter.post('/', admin, async (req, res, next) => {
         questions: { create: ids.map((questionId, position) => ({ questionId, position })) },
         groups: { create: gids.map(groupId => ({ groupId })) } }
     });
-    await audit(req, 'EXAM_CREATED', { targetType: 'Exam', targetId: exam.id, detail: `${exam.title}${gids.length ? ` → ${gids.length} nhóm` : ' → tất cả'}` });
+    await audit(req, 'EXAM_CREATED', { targetType: 'Exam', targetId: exam.id, detail: `${exam.title}${exam.live ? ' [live]' : ''}${gids.length ? ` → ${gids.length} nhóm` : ' → tất cả'}` });
     res.status(201).json({ exam });
   } catch (e) { next(e); }
 });
@@ -76,6 +71,20 @@ examsRouter.patch('/:id/status', admin, async (req, res, next) => {
     const updated = await prisma.exam.update({ where: { id: exam.id }, data: { status: parsed.data.status } });
     await audit(req, 'EXAM_STATUS', { targetType: 'Exam', targetId: exam.id, detail: parsed.data.status });
     res.json({ exam: updated });
+  } catch (e) { next(e); }
+});
+
+// Quản trị bấm "Bắt đầu" cho phòng thi trực tiếp: mọi thí sinh trong phòng chờ nhận tín hiệu cùng lúc.
+examsRouter.post('/:id/live/start', admin, async (req, res, next) => {
+  try {
+    const exam = await prisma.exam.findUnique({ where: { id: req.params.id } });
+    if (!exam || !exam.live) return res.status(404).json({ error: 'Không tìm thấy phòng thi trực tiếp' });
+    if (exam.status !== 'PUBLISHED') return res.status(400).json({ error: 'Cần mở thi (Đang mở) trước khi bắt đầu phòng' });
+    if (exam.liveStartedAt) return res.status(409).json({ error: 'Phòng thi đã bắt đầu' });
+    const updated = await prisma.exam.update({ where: { id: exam.id }, data: { liveStartedAt: new Date() } });
+    await audit(req, 'LIVE_STARTED', { targetType: 'Exam', targetId: exam.id, detail: exam.title });
+    announceStart(updated);
+    res.json({ room: roomInfo(updated) });
   } catch (e) { next(e); }
 });
 
@@ -169,6 +178,7 @@ examsRouter.get('/', async (req, res, next) => {
       const expired = a && !a.submittedAt && Date.now() > deadline(a, e).getTime() + GRACE_MS;
       return { id: e.id, title: e.title, description: e.description, durationMinutes: e.durationMinutes,
         passPercent: e.passPercent, status: e.status, questionCount: e._count.questions,
+        live: e.live, liveStartedAt: e.liveStartedAt,
         attempt: a ? { id: a.id, submitted: Boolean(a.submittedAt) || expired, percent: a.percent, passed: a.passed } : null };
     }) });
   } catch (e) { next(e); }
@@ -187,7 +197,16 @@ examsRouter.post('/:id/start', async (req, res, next) => {
     let attempt = await prisma.attempt.findUnique({ where: { examId_userId: { examId: exam.id, userId: req.user.id } } });
     if (!attempt) {
       if (exam.status !== 'PUBLISHED') return res.status(400).json({ error: 'Đề thi đã đóng' });
-      attempt = await prisma.attempt.create({ data: { examId: exam.id, userId: req.user.id } });
+      if (exam.live) {
+        // Phòng thi trực tiếp: chỉ vào được sau khi quản trị bấm bắt đầu; mọi người cùng một mốc giờ.
+        if (!exam.liveStartedAt) return res.status(409).json({ error: 'Phòng thi chưa bắt đầu' });
+        if (Date.now() > deadlineAt(exam.liveStartedAt, exam.durationMinutes).getTime()) {
+          return res.status(400).json({ error: 'Phòng thi đã hết giờ' });
+        }
+      }
+      attempt = await prisma.attempt.create({
+        data: { examId: exam.id, userId: req.user.id, ...(exam.live && { startedAt: exam.liveStartedAt }) }
+      });
     }
     const end = deadline(attempt, exam);
     if (!attempt.submittedAt && Date.now() > end.getTime() + GRACE_MS) {
@@ -197,7 +216,7 @@ examsRouter.post('/:id/start', async (req, res, next) => {
     if (attempt.submittedAt) return res.json({ done: true, attemptId: attempt.id });
 
     res.json({
-      done: false, attemptId: attempt.id, endsAt: end,
+      done: false, attemptId: attempt.id, endsAt: end, serverNow: new Date(),
       exam: { id: exam.id, title: exam.title },
       questions: exam.questions.map(({ question: q }) => ({
         id: q.id, content: q.content, type: q.type,
@@ -219,6 +238,7 @@ examsRouter.post('/attempts/:attemptId/submit', async (req, res, next) => {
     const late = Date.now() > deadline(attempt, attempt.exam).getTime() + GRACE_MS;
     // Nộp trễ quá thời gian cho phép: không nhận đáp án, chấm 0 câu.
     await finalize(attempt, late ? {} : parsed.data.answers, late);
+    if (attempt.exam.live) broadcastRoom(attempt.examId);
     await audit(req, 'EXAM_SUBMITTED', { targetType: 'Attempt', targetId: attempt.id, detail: late ? 'late' : undefined });
     res.json(await review(attempt.id));
   } catch (e) { next(e); }

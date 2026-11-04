@@ -16,6 +16,7 @@ import { usersRouter } from './routes/users.js';
 import { questionsRouter } from './routes/questions.js';
 import { examsRouter } from './routes/exams.js';
 import { auditRouter } from './routes/audit.js';
+import { attachRealtime } from './realtime.js';
 import { groupsRouter } from './routes/groups.js';
 import { reportsRouter } from './routes/reports.js';
 import { documentsRouter } from './routes/documents.js';
@@ -30,7 +31,7 @@ app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'TTH Accounting Quiz API', version: '0.6.0' });
+  res.json({ status: 'ok', service: 'TTH Accounting Quiz API', version: '0.7.0' });
 });
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
@@ -63,12 +64,13 @@ io.use(async (socket, next) => {
     const payload = jwt.verify(token, config.jwtSecret);
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user || user.status !== 'ACTIVE' || user.tokenVersion !== payload.v) throw new Error('unauthorized');
-    socket.data.user = { id: user.id, role: user.role };
+    socket.data.user = { id: user.id, role: user.role, fullName: user.fullName };
     next();
   } catch {
     next(new Error('unauthorized'));
   }
 });
+attachRealtime(io);
 io.on('connection', socket => {
   socket.emit('system:connected', { message: 'Connected to TTH Quiz realtime service' });
 });

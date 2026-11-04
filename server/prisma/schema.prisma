@@ -120,6 +120,8 @@ model Exam {
   passPercent     Int            @default(70)
   status          ExamStatus     @default(DRAFT)
   assignAll       Boolean        @default(true)
+  live            Boolean        @default(false)
+  liveStartedAt   DateTime?
   groups          ExamGroup[]
   questions       ExamQuestion[]
   attempts        Attempt[]

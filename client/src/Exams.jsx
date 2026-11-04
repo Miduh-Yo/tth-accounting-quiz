@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from './api.js';
+import { LiveLobby, LiveMonitor } from './LiveRoom.jsx';
 
 const STATUS_LABEL = { DRAFT: 'Nháp', PUBLISHED: 'Đang mở', CLOSED: 'Đã đóng' };
 
 // ---------- Màn làm bài ----------
 function TakeExam({ session, onFinish }) {
   const [answers, setAnswers] = useState({});
-  const [left, setLeft] = useState(() => Math.max(0, new Date(session.endsAt) - Date.now()));
+  // Bù lệch đồng hồ giữa máy thí sinh và máy chủ.
+  const skew = useRef(session.serverNow ? new Date(session.serverNow) - Date.now() : 0);
+  const remaining = () => Math.max(0, new Date(session.endsAt) - (Date.now() + skew.current));
+  const [left, setLeft] = useState(remaining);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const answersRef = useRef(answers);
@@ -23,7 +27,7 @@ function TakeExam({ session, onFinish }) {
   }
 
   useEffect(() => {
-    const t = setInterval(() => setLeft(Math.max(0, new Date(session.endsAt) - Date.now())), 1000);
+    const t = setInterval(() => setLeft(remaining()), 1000);
     return () => clearInterval(t);
   }, [session.endsAt]);
   useEffect(() => { if (left === 0) submit(); }, [left]);
@@ -92,6 +96,7 @@ export function MyExams() {
   }
   const back = () => { setView(null); load(); };
 
+  if (view?.lobby) return <LiveLobby exam={view.lobby} onBack={back} onStarted={() => open(view.lobby)} />;
   if (view?.take) return <TakeExam session={view.take} onFinish={r => setView({ review: r })} />;
   if (view?.review) return <Review data={view.review} onBack={back} />;
   return <div className="card">
@@ -101,11 +106,13 @@ export function MyExams() {
       <thead><tr><th>Đề thi</th><th>Số câu</th><th>Thời gian</th><th>Kết quả</th><th></th></tr></thead>
       <tbody>
         {exams.map(e => <tr key={e.id}>
-          <td>{e.title}</td><td>{e.questionCount}</td><td>{e.durationMinutes} phút</td>
+          <td>{e.title}{e.live && ' 🔴 Trực tiếp'}</td><td>{e.questionCount}</td><td>{e.durationMinutes} phút</td>
           <td>{e.attempt?.submitted ? `${e.attempt.percent ?? 0}% · ${e.attempt.passed ? 'Đạt' : 'Chưa đạt'}` : e.attempt ? 'Đang làm dở' : '—'}</td>
           <td className="actions">
             {e.attempt?.submitted ? <button className="link" onClick={() => open(e)}>Xem kết quả</button>
-              : e.status === 'PUBLISHED' && <button className="link" onClick={() => open(e)}>{e.attempt ? 'Làm tiếp' : 'Bắt đầu'}</button>}
+              : e.status === 'PUBLISHED' && (e.live && !e.attempt && !e.liveStartedAt
+                ? <button className="link" onClick={() => setView({ lobby: e })}>Vào phòng chờ</button>
+                : <button className="link" onClick={() => open(e)}>{e.attempt ? 'Làm tiếp' : e.live ? 'Vào thi ngay' : 'Bắt đầu'}</button>)}
           </td>
         </tr>)}
         {exams.length === 0 && <tr><td colSpan={5} className="muted">Chưa có đề thi nào.</td></tr>}
@@ -121,6 +128,7 @@ function ExamForm({ onSaved, onCancel }) {
   const [picked, setPicked] = useState(new Set());
   const [groups, setGroups] = useState([]);
   const [assignAll, setAssignAll] = useState(true);
+  const [live, setLive] = useState(false);
   const [groupIds, setGroupIds] = useState(new Set());
   const [error, setError] = useState('');
   useEffect(() => { api('/groups').then(d => setGroups(d.groups)).catch(() => {}); }, []);
@@ -130,7 +138,7 @@ function ExamForm({ onSaved, onCancel }) {
   async function submit(event) {
     event.preventDefault(); setError('');
     try {
-      await api('/exams', { method: 'POST', body: { ...f, durationMinutes: Number(f.durationMinutes), passPercent: Number(f.passPercent), questionIds: [...picked], assignAll, groupIds: [...groupIds] } });
+      await api('/exams', { method: 'POST', body: { ...f, durationMinutes: Number(f.durationMinutes), passPercent: Number(f.passPercent), questionIds: [...picked], assignAll, live, groupIds: [...groupIds] } });
       onSaved();
     } catch (e) { setError(e.message); }
   }
@@ -143,6 +151,7 @@ function ExamForm({ onSaved, onCancel }) {
       <label>Thời gian (phút)<input type="number" min="1" max="240" value={f.durationMinutes} onChange={set('durationMinutes')} /></label>
       <label>Điểm đạt (%)<input type="number" min="1" max="100" value={f.passPercent} onChange={set('passPercent')} /></label>
     </div>
+    <label className="q-opt"><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)} /> Phòng thi trực tiếp (quản trị bấm bắt đầu, mọi người vào thi cùng lúc)</label>
     <div>
       <label className="q-opt"><input type="checkbox" checked={assignAll} onChange={e => setAssignAll(e.target.checked)} /> Giao cho tất cả nhân viên</label>
       {!assignAll && <div className="pick-list">
@@ -165,6 +174,7 @@ export function ExamAdmin() {
   const [exams, setExams] = useState([]);
   const [creating, setCreating] = useState(false);
   const [results, setResults] = useState(null);
+  const [room, setRoom] = useState(null);
   const [error, setError] = useState('');
   const load = () => api('/exams/manage').then(d => setExams(d.exams)).catch(e => setError(e.message));
   useEffect(() => { load(); }, []);
@@ -177,6 +187,7 @@ export function ExamAdmin() {
     try { setResults({ exam: e, rows: (await api(`/exams/${e.id}/results`)).results }); } catch (err) { setError(err.message); }
   }
 
+  if (room) return <LiveMonitor exam={room} onBack={() => { setRoom(null); load(); }} />;
   return <div className="card">
     <h2>Quản lý đề thi</h2>
     {creating ? <ExamForm onSaved={() => { setCreating(false); load(); }} onCancel={() => setCreating(false)} />
@@ -186,12 +197,13 @@ export function ExamAdmin() {
       <thead><tr><th>Đề thi</th><th>Câu</th><th>Phút</th><th>Trạng thái</th><th>Lượt làm</th><th>Giao cho</th><th></th></tr></thead>
       <tbody>
         {exams.map(e => <tr key={e.id}>
-          <td>{e.title}</td><td>{e._count.questions}</td><td>{e.durationMinutes}</td><td>{STATUS_LABEL[e.status]}</td><td>{e._count.attempts}</td>
+          <td>{e.title}{e.live && ' 🔴'}</td><td>{e._count.questions}</td><td>{e.durationMinutes}</td><td>{STATUS_LABEL[e.status]}</td><td>{e._count.attempts}</td>
           <td>{e.assignAll ? 'Tất cả' : e.groups.map(g => g.group.name).join(', ') || '—'}</td>
           <td className="actions">
             {e.status === 'DRAFT' && <button className="link" onClick={() => setStatus(e.id, 'PUBLISHED')}>Mở thi</button>}
             {e.status === 'PUBLISHED' && <button className="link" onClick={() => setStatus(e.id, 'CLOSED')}>Đóng</button>}
             {e.status === 'CLOSED' && <button className="link" onClick={() => setStatus(e.id, 'PUBLISHED')}>Mở lại</button>}
+            {e.live && e.status === 'PUBLISHED' && <button className="link" onClick={() => setRoom(e)}>Vào phòng</button>}
             <button className="link" onClick={() => showResults(e)}>Kết quả</button>
           </td>
         </tr>)}
