@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
 import { audit } from '../audit.js';
+import { toCsv } from '../csv.js';
 import { gradeQuestion, summarize } from '../grading.js';
 
 export const examsRouter = Router();
@@ -61,6 +62,25 @@ examsRouter.patch('/:id/status', admin, async (req, res, next) => {
     const updated = await prisma.exam.update({ where: { id: exam.id }, data: { status: parsed.data.status } });
     await audit(req, 'EXAM_STATUS', { targetType: 'Exam', targetId: exam.id, detail: parsed.data.status });
     res.json({ exam: updated });
+  } catch (e) { next(e); }
+});
+
+examsRouter.get('/:id/results.csv', admin, async (req, res, next) => {
+  try {
+    const exam = await prisma.exam.findUnique({ where: { id: req.params.id } });
+    if (!exam) return res.status(404).json({ error: 'Không tìm thấy đề thi' });
+    const attempts = await prisma.attempt.findMany({
+      where: { examId: exam.id }, orderBy: { startedAt: 'asc' },
+      include: { user: { select: { username: true, fullName: true } } }
+    });
+    const fmt = d => (d ? d.toISOString() : '');
+    const rows = [['Tài khoản', 'Họ tên', 'Bắt đầu', 'Nộp bài', 'Số câu đúng', 'Tổng số câu', 'Tỷ lệ (%)', 'Kết quả', 'Nộp trễ'],
+      ...attempts.map(a => [a.user.username, a.user.fullName, fmt(a.startedAt), fmt(a.submittedAt), a.correct, a.total, a.percent,
+        a.submittedAt ? (a.passed ? 'Đạt' : 'Chưa đạt') : 'Đang làm', a.late ? 'Có' : ''])];
+    await audit(req, 'RESULTS_EXPORTED', { targetType: 'Exam', targetId: exam.id });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="ket-qua-${exam.id}.csv"`);
+    res.send(toCsv(rows));
   } catch (e) { next(e); }
 });
 

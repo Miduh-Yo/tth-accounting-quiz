@@ -14,7 +14,7 @@ export default function AuditLog() {
     <select value={action} onChange={e => setAction(e.target.value)}>
       <option value="">Tất cả</option>
       {['LOGIN', 'LOGIN_FAILED', 'PASSWORD_CHANGED', 'USER_CREATED', 'USER_UPDATED', 'QUESTION_CREATED', 'QUESTION_UPDATED',
-        'QUESTION_ARCHIVED', 'EXAM_CREATED', 'EXAM_STATUS', 'EXAM_SUBMITTED'].map(a => <option key={a}>{a}</option>)}
+        'QUESTION_ARCHIVED', 'EXAM_CREATED', 'EXAM_STATUS', 'EXAM_SUBMITTED', 'RESULTS_EXPORTED'].map(a => <option key={a}>{a}</option>)}
     </select>
     {error && <div className="error" role="alert">{error}</div>}
     <div className="table-wrap"><table>

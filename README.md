@@ -1,4 +1,4 @@
-# TTH Accounting Quiz – Phiên bản 0.2
+# TTH Accounting Quiz – Phiên bản 0.3
 
 Có đăng nhập thật (JWT trong cookie httpOnly), phân quyền phía máy chủ (RBAC), quản lý tài khoản, khởi tạo Super Admin an toàn, Socket.io yêu cầu đăng nhập.
 
@@ -36,10 +36,19 @@ Mọi kiểm tra quyền thực hiện ở server (`server/src/auth.js`), không
 - `helmet`, giới hạn kích thước body, kiểm tra dữ liệu bằng `zod`.
 - Không có tài khoản/mật khẩu mặc định trong mã nguồn.
 
+## Chức năng (0.3)
+- **Ngân hàng câu hỏi** (ADMIN trở lên): chủ đề, loại (một/nhiều đáp án, Đúng/Sai), độ khó, giải thích, căn cứ. Không xoá cứng, chỉ "Lưu trữ".
+- **Đề thi**: tạo từ câu hỏi "Đang dùng", mở/đóng thi. Nhân viên làm bài có đồng hồ, mỗi người một lượt/đề; server tự tính hạn nộp (+30 giây bù mạng) và chấm điểm; đáp án đúng chỉ lộ sau khi nộp.
+- **Báo cáo**: xem kết quả từng đề, tải CSV (an toàn với Excel, chống CSV injection).
+- **Nhật ký hoạt động** (SUPER_ADMIN): đăng nhập, quản lý tài khoản/câu hỏi/đề thi, nộp bài, xuất báo cáo.
+- Test tự động cho chấm điểm và CSV: `npm test -w server`.
+- Mỗi lần thêm bảng cần chạy `npm run db:migrate` (Render tự chạy khi deploy).
+
 ## Chưa làm
-- Ngân hàng câu hỏi, tài liệu/quy định, phòng thi, chấm điểm, báo cáo.
-- Nhật ký kiểm toán (audit log), test tự động.
-- Khi triển khai thật: chạy sau HTTPS/reverse proxy, đặt `trust proxy` cho Express để rate limit đúng IP.
+- Tài liệu/quy định gắn với câu hỏi.
+- Phòng thi đồng bộ thời gian thực (Socket.io), giao đề cho từng người/nhóm (hiện đề đang mở là mọi tài khoản đều thấy).
+- Báo cáo tổng hợp theo chủ đề/nhân viên, nhập câu hỏi hàng loạt (Excel/CSV).
+- Test tích hợp với database thật.
 
 ## Logo
 `client/src/assets/tth-logo.jpg`.

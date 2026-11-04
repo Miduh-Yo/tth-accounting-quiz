@@ -184,7 +184,7 @@ export function ExamAdmin() {
       </tbody>
     </table></div>
     {results && <>
-      <h3>Kết quả: {results.exam.title} <button className="link" onClick={() => setResults(null)}>Ẩn</button></h3>
+      <h3>Kết quả: {results.exam.title} <a className="link" href={`/api/exams/${results.exam.id}/results.csv`}>Tải CSV</a> <button className="link" onClick={() => setResults(null)}>Ẩn</button></h3>
       <div className="table-wrap"><table>
         <thead><tr><th>Nhân viên</th><th>Điểm</th><th>Kết quả</th><th>Trạng thái</th></tr></thead>
         <tbody>{results.rows.map(r => <tr key={r.id}>
