@@ -186,6 +186,34 @@ test('luồng đầy đủ: RBAC, câu hỏi, nhập CSV, nhóm, giao đề, là
     assert.deepEqual(emp.map(x => [x.username, x.attempts, x.avgPercent, x.passed]), [['nv2', 1, 0, 0], ['nv1', 1, 67, 0]]);
   });
 
+  await t.test('tài liệu: chặn URL nguy hiểm, phân quyền, gắn vào câu hỏi và hiện khi xem lại', async () => {
+    const bad = await admin.post('/documents', { title: 'Xấu', url: 'javascript:alert(1)' });
+    assert.equal(bad.status, 400);
+    assert.equal((await e2.post('/documents', { title: 'x' })).status, 403);
+    const d = await admin.post('/documents', { title: 'Thông tư 78', code: '78/2014/TT-BTC', url: 'https://example.com/tt78', effectiveDate: '2014-08-02', summary: '' });
+    assert.equal(d.status, 201);
+    assert.equal(d.body.document.summary, null);
+    const arch = await admin.post('/documents', { title: 'Cũ', status: 'ARCHIVED' });
+    assert.equal((await e2.get('/documents')).body.documents.length, 1); // nhân viên chỉ thấy tài liệu hiệu lực
+    assert.equal((await admin.get('/documents?all=1')).body.documents.length, 2);
+    assert.equal((await e2.get('/documents?all=1')).body.documents.length, 1);
+    // gắn vào câu hỏi (mới tạo, dùng cho đề riêng) rồi làm bài để xem lại
+    assert.equal((await admin.post('/questions', q({ documentId: 'khong-co' }))).status, 400);
+    const qq = await admin.post('/questions', q({ content: 'Có căn cứ', documentId: d.body.document.id, reference: 'Điều 5' }));
+    assert.equal(qq.body.question.document.code, '78/2014/TT-BTC');
+    const ex = await admin.post('/exams', { title: 'Đề căn cứ', durationMinutes: 5, questionIds: [qq.body.question.id], assignAll: true });
+    await admin.patch(`/exams/${ex.body.exam.id}/status`, { status: 'PUBLISHED' });
+    const e3 = client();
+    await admin.post('/users', { username: 'nv3', fullName: 'nv3', role: 'EMPLOYEE', password: PW });
+    await e3.post('/auth/login', { username: 'nv3', password: PW });
+    const st = await e3.post(`/exams/${ex.body.exam.id}/start`);
+    assert.ok(!JSON.stringify(st.body).includes('78/2014')); // chưa nộp thì không lộ căn cứ
+    const r = await e3.post(`/exams/attempts/${st.body.attemptId}/submit`, { answers: {} });
+    assert.equal(r.body.items[0].document.url, 'https://example.com/tt78');
+    assert.equal(r.body.items[0].reference, 'Điều 5');
+    assert.equal((await admin.del(`/documents/${arch.body.document.id}`)).body.document.status, 'ARCHIVED');
+  });
+
   await t.test('khoá tài khoản làm mất hiệu lực phiên', async () => {
     const users = (await admin.get('/users')).body.users;
     assert.equal((await admin.patch(`/users/${users.find(u => u.username === 'nv1').id}`, { status: 'LOCKED' })).status, 200);

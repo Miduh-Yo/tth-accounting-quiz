@@ -141,7 +141,8 @@ async function review(attemptId) {
   const attempt = await prisma.attempt.findUnique({
     where: { id: attemptId },
     include: { answers: true, exam: { include: { questions: { orderBy: { position: 'asc' },
-      include: { question: { include: { options: { orderBy: { position: 'asc' } } } } } } } } }
+      include: { question: { include: { options: { orderBy: { position: 'asc' } },
+        document: { select: { title: true, code: true, url: true } } } } } } } } }
   });
   const byQ = new Map(attempt.answers.map(a => [a.questionId, a]));
   return {
@@ -149,7 +150,7 @@ async function review(attemptId) {
       passed: attempt.passed, late: attempt.late, submittedAt: attempt.submittedAt },
     exam: { id: attempt.exam.id, title: attempt.exam.title, passPercent: attempt.exam.passPercent },
     items: attempt.exam.questions.map(({ question: q }) => ({
-      id: q.id, content: q.content, type: q.type, explanation: q.explanation, reference: q.reference,
+      id: q.id, content: q.content, type: q.type, explanation: q.explanation, reference: q.reference, document: q.document,
       isCorrect: byQ.get(q.id)?.isCorrect ?? false, selectedIds: byQ.get(q.id)?.selectedIds ?? [],
       options: q.options.map(o => ({ id: o.id, text: o.text, isCorrect: o.isCorrect }))
     }))

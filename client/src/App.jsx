@@ -8,6 +8,7 @@ import { MyExams, ExamAdmin } from './Exams.jsx';
 import AuditLog from './AuditLog.jsx';
 import GroupAdmin from './Groups.jsx';
 import Reports from './Reports.jsx';
+import Documents from './Documents.jsx';
 
 const ROLE_LABEL = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Quản trị viên', EMPLOYEE: 'Nhân viên' };
 
@@ -103,6 +104,7 @@ function Home({ user, onChangePassword }) {
       <button className="link" onClick={onChangePassword}><KeyRound size={14} /> Đổi mật khẩu</button>
     </div>
     <MyExams />
+    <Documents isAdmin={isAdmin} />
     {isAdmin && <GroupAdmin />}
     {isAdmin && <ExamAdmin />}
     {isAdmin && <Reports />}
@@ -140,6 +142,6 @@ export default function App() {
             : <span>HỆ THỐNG ĐÀO TẠO NỘI BỘ</span>}
     </div>
     {body}
-    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.5</span></footer>
+    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.6</span></footer>
   </main>;
 }

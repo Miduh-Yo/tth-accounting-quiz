@@ -67,6 +67,8 @@ function QuestionForm({ initial, topics, onSaved, onCancel }) {
   const [f, setF] = useState(initial);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [docs, setDocs] = useState([]);
+  useEffect(() => { api('/documents').then(d => setDocs(d.documents)).catch(() => {}); }, []);
   const editing = Boolean(initial.id);
   const set = k => e => setF({ ...f, [k]: e.target.value });
 
@@ -90,7 +92,7 @@ function QuestionForm({ initial, topics, onSaved, onCancel }) {
     event.preventDefault();
     setError(''); setBusy(true);
     try {
-      const { id, createdAt, updatedAt, createdById, ...body } = f;
+      const { id, createdAt, updatedAt, createdById, document, ...body } = f;
       body.options = body.options.map(({ text, isCorrect }) => ({ text, isCorrect }));
       await api(editing ? `/questions/${id}` : '/questions', { method: editing ? 'PUT' : 'POST', body });
       onSaved();
@@ -116,7 +118,11 @@ function QuestionForm({ initial, topics, onSaved, onCancel }) {
       {f.type !== 'TRUE_FALSE' && f.options.length < 8 && <button type="button" className="link" onClick={addOpt}>+ Thêm đáp án</button>}
     </div>
     <textarea rows={2} placeholder="Giải thích đáp án (không bắt buộc)" value={f.explanation || ''} onChange={set('explanation')} />
-    <input placeholder="Căn cứ / điều khoản tham chiếu (không bắt buộc)" value={f.reference || ''} onChange={set('reference')} />
+    <select value={f.documentId || ''} onChange={set('documentId')}>
+      <option value="">— Không gắn tài liệu —</option>
+      {docs.map(d => <option key={d.id} value={d.id}>{d.code ? `${d.code} · ` : ''}{d.title}</option>)}
+    </select>
+    <input placeholder="Điều/khoản cụ thể (không bắt buộc)" value={f.reference || ''} onChange={set('reference')} />
     {error && <div className="error" role="alert">{error}</div>}
     <div className="q-actions">
       <button className="submit small" type="submit" disabled={busy}>{editing ? 'Lưu thay đổi' : 'Thêm câu hỏi'}</button>

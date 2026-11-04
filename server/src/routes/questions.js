@@ -22,6 +22,7 @@ const questionSchema = z.object({
   content: z.string().trim().min(1, 'Nhập nội dung câu hỏi').max(2000),
   explanation: z.string().trim().max(2000).optional().transform(v => v || null),
   reference: z.string().trim().max(500).optional().transform(v => v || null),
+  documentId: z.string().optional().transform(v => v || null),
   options: z.array(optionSchema).min(2, 'Cần ít nhất 2 đáp án').max(8)
 }).superRefine((q, ctx) => {
   const correct = q.options.filter(o => o.isCorrect).length;
@@ -31,7 +32,9 @@ const questionSchema = z.object({
   if (q.type === 'MULTIPLE' && correct < 1) bad('Cần ít nhất 1 đáp án đúng');
 });
 
-const include = { options: { orderBy: { position: 'asc' } } };
+const include = { options: { orderBy: { position: 'asc' } }, document: { select: { id: true, title: true, code: true } } };
+
+const docMissing = async id => id && !(await prisma.document.findUnique({ where: { id }, select: { id: true } }));
 
 questionsRouter.get('/', async (req, res, next) => {
   try {
@@ -81,6 +84,7 @@ questionsRouter.post('/', async (req, res, next) => {
     const parsed = questionSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
     const { options, ...data } = parsed.data;
+    if (await docMissing(data.documentId)) return res.status(400).json({ error: 'Tài liệu không tồn tại' });
     const question = await prisma.question.create({
       data: { ...data, createdById: req.user.id,
         options: { create: options.map((o, i) => ({ ...o, position: i })) } },
@@ -96,6 +100,7 @@ questionsRouter.put('/:id', async (req, res, next) => {
     const parsed = questionSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
     const { options, ...data } = parsed.data;
+    if (await docMissing(data.documentId)) return res.status(400).json({ error: 'Tài liệu không tồn tại' });
     const exists = await prisma.question.findUnique({ where: { id: req.params.id }, select: { id: true } });
     if (!exists) return res.status(404).json({ error: 'Không tìm thấy câu hỏi' });
     const [, question] = await prisma.$transaction([

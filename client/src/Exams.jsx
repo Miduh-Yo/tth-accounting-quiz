@@ -66,7 +66,9 @@ function Review({ data, onBack }) {
         {o.isCorrect ? '✔' : q.selectedIds.includes(o.id) ? '✘' : '•'} {o.text}{q.selectedIds.includes(o.id) && ' (bạn chọn)'}
       </div>)}
       {q.explanation && <p className="muted">Giải thích: {q.explanation}</p>}
-      {q.reference && <p className="muted">Căn cứ: {q.reference}</p>}
+      {(q.document || q.reference) && <p className="muted">Căn cứ: {q.document && (q.document.url
+        ? <a href={q.document.url} target="_blank" rel="noopener noreferrer">{[q.document.code, q.document.title].filter(Boolean).join(' · ')}</a>
+        : [q.document.code, q.document.title].filter(Boolean).join(' · '))}{q.document && q.reference && ' — '}{q.reference}</p>}
     </div>)}
     <button className="link" onClick={onBack}>← Quay lại</button>
   </div>;
