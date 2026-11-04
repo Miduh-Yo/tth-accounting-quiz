@@ -1,4 +1,4 @@
-# TTH Accounting Quiz – Phiên bản 0.7
+# TTH Accounting Quiz – Phiên bản 0.8
 
 Có đăng nhập thật (JWT trong cookie httpOnly), phân quyền phía máy chủ (RBAC), quản lý tài khoản, khởi tạo Super Admin an toàn, Socket.io yêu cầu đăng nhập.
 
@@ -37,12 +37,13 @@ Mọi kiểm tra quyền thực hiện ở server (`server/src/auth.js`), không
 - `helmet`, giới hạn kích thước body, kiểm tra dữ liệu bằng `zod`.
 - Không có tài khoản/mật khẩu mặc định trong mã nguồn.
 
-## Chức năng (0.7)
+## Chức năng (0.8)
 - **Ngân hàng câu hỏi** (ADMIN trở lên): chủ đề, loại (một/nhiều đáp án, Đúng/Sai), độ khó, giải thích, căn cứ. Không xoá cứng, chỉ "Lưu trữ".
 - **Đề thi**: tạo từ câu hỏi "Đang dùng", mở/đóng thi. Nhân viên làm bài có đồng hồ, mỗi người một lượt/đề; server tự tính hạn nộp (+30 giây bù mạng) và chấm điểm; đáp án đúng chỉ lộ sau khi nộp.
 - **Phòng thi trực tiếp** (Socket.io): khi tạo đề tick "Phòng thi trực tiếp". Thí sinh vào phòng chờ; quản trị mở "Vào phòng" để thấy ai online/đã nộp theo thời gian thực rồi bấm "Bắt đầu" — mọi người cùng mốc giờ, bài tự mở. Câu hỏi không đi qua socket (lấy qua REST sau khi bắt đầu, server từ chối trước giờ). Đồng hồ làm bài bù lệch giờ máy thí sinh. Chạy đúng với 1 instance server (Render free); nhiều instance cần thêm adapter Redis.
+- **Cảnh báo rời tab**: khi thí sinh chuyển tab/cửa sổ lúc làm bài, hệ thống báo cho thí sinh và đếm lại; quản trị thấy cột "Rời tab" ở kết quả và CSV. Chỉ để tham khảo, không tự trừ điểm (trình duyệt không chặn được mọi gian lận).
 - **Tài liệu & quy định**: thư viện văn bản (tên, số hiệu, ngày hiệu lực, tóm tắt, liên kết http/https) mọi người đều xem được; ADMIN quản lý (không xoá cứng, chỉ lưu trữ). Câu hỏi gắn được với một tài liệu + điều/khoản; sau khi nộp bài, nhân viên thấy căn cứ kèm đáp án.
-- **Nhập câu hỏi từ CSV** (tối đa 500 câu/lần, có file mẫu): kiểm tra trước, chỉ nhập khi toàn bộ file hợp lệ; câu vào ở trạng thái Nháp. Nhận dấu phân cách `,` hoặc `;`.
+- **Nhập câu hỏi từ CSV** (tối đa 500 câu/lần, có file mẫu; cột "Tài liệu" khớp theo số hiệu hoặc tên trong thư viện): kiểm tra trước, chỉ nhập khi toàn bộ file hợp lệ; câu vào ở trạng thái Nháp. Nhận dấu phân cách `,` hoặc `;`.
 - **Nhóm & giao đề**: ADMIN tạo nhóm nhân viên; khi tạo đề chọn "giao cho tất cả" hoặc một số nhóm. Server chỉ cho thấy/cho làm đề được giao (hoặc đề người đó đã có bài làm). Không xoá được nhóm đang được giao đề.
 - **Báo cáo**: xem kết quả từng đề, tải CSV (an toàn với Excel, chống CSV injection).
 - **Báo cáo tổng hợp** (ADMIN trở lên): tỷ lệ đúng theo chủ đề (yếu → mạnh), lọc theo đề và theo nhân viên; điểm trung bình và số bài đạt của từng nhân viên.
@@ -52,8 +53,7 @@ Mọi kiểm tra quyền thực hiện ở server (`server/src/auth.js`), không
 
 ## Chưa làm
 - Tải file tài liệu lên (hiện chỉ lưu liên kết, vì ổ đĩa Render gói miễn phí không bền).
-- Gắn tài liệu khi nhập CSV (hiện gắn thủ công sau khi nhập).
-- Phòng thi trực tiếp chưa có: chat/cảnh báo gian lận, nhiều instance server (Redis adapter).
+- Phòng thi trực tiếp chưa có: chat, camera giám sát, nhiều instance server (Redis adapter).
 - Nhập trực tiếp file .xlsx (hiện cần lưu thành CSV UTF-8).
 
 ## Logo
