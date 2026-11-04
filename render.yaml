@@ -10,8 +10,8 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install --include=dev && npm run build
-    preDeployCommand: npm run db:deploy -w server
-    startCommand: npm start
+    # Gói free không hỗ trợ preDeployCommand nên chạy migration ngay trước khi khởi động.
+    startCommand: npm run db:deploy -w server && npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
