@@ -3,6 +3,7 @@ import { BookOpenCheck, ShieldCheck, Users, Eye, EyeOff, ArrowRight, LogOut, Key
 import logo from './assets/tth-logo.jpg';
 import { api } from './api.js';
 import UserAdmin from './UserAdmin.jsx';
+import QuestionBank from './QuestionBank.jsx';
 
 const ROLE_LABEL = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Quản trị viên', EMPLOYEE: 'Nhân viên' };
 
@@ -94,9 +95,10 @@ function Home({ user, onChangePassword }) {
     <div className="card">
       <h2>Xin chào, {user.fullName}</h2>
       <p className="muted">Vai trò: <b>{ROLE_LABEL[user.role]}</b> · Tài khoản: {user.username}</p>
-      <p className="muted">Các chức năng ngân hàng câu hỏi và phòng thi sẽ được bổ sung ở các bước tiếp theo.</p>
+      <p className="muted">Chức năng phòng thi và chấm điểm sẽ được bổ sung ở các bước tiếp theo.</p>
       <button className="link" onClick={onChangePassword}><KeyRound size={14} /> Đổi mật khẩu</button>
     </div>
+    {isAdmin && <QuestionBank />}
     {isAdmin && <UserAdmin me={user} />}
   </section>;
 }
