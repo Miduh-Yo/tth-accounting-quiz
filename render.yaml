@@ -1,0 +1,28 @@
+# Render Blueprint: 1 web service (API + giao diện) + 1 PostgreSQL.
+databases:
+  - name: tth-quiz-db
+    plan: free
+    databaseName: tth_quiz
+
+services:
+  - type: web
+    name: tth-accounting-quiz
+    runtime: node
+    plan: free
+    buildCommand: npm install --include=dev && npm run build
+    preDeployCommand: npm run db:deploy -w server
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tth-quiz-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: CLIENT_ORIGIN
+        sync: false
