@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
+import { gradeQuestion, summarize } from '../grading.js';
 
 export const examsRouter = Router();
 examsRouter.use(requireAuth);
@@ -82,20 +83,17 @@ async function finalize(attempt, selections, late) {
   });
   const exam = await prisma.exam.findUnique({ where: { id: attempt.examId } });
   const rows = examQs.map(({ question }) => {
-    const valid = new Set(question.options.map(o => o.id));
-    const picked = [...new Set(selections[question.id] || [])].filter(id => valid.has(id));
-    const right = question.options.filter(o => o.isCorrect).map(o => o.id);
-    const isCorrect = picked.length === right.length && right.every(id => picked.includes(id));
+    const { picked, isCorrect } = gradeQuestion(question.options, selections[question.id]);
     return { attemptId: attempt.id, questionId: question.id, selectedIds: picked, isCorrect };
   });
   const correct = rows.filter(r => r.isCorrect).length;
   const total = rows.length;
-  const percent = total ? Math.round((correct / total) * 100) : 0;
+  const { percent, passed } = summarize(correct, total, exam.passPercent);
   const [, updated] = await prisma.$transaction([
     prisma.attemptAnswer.createMany({ data: rows }),
     prisma.attempt.update({
       where: { id: attempt.id },
-      data: { submittedAt: new Date(), late, correct, total, percent, passed: percent >= exam.passPercent }
+      data: { submittedAt: new Date(), late, correct, total, percent, passed }
     })
   ]);
   return updated;
