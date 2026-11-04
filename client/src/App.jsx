@@ -4,6 +4,7 @@ import logo from './assets/tth-logo.jpg';
 import { api } from './api.js';
 import UserAdmin from './UserAdmin.jsx';
 import QuestionBank from './QuestionBank.jsx';
+import { MyExams, ExamAdmin } from './Exams.jsx';
 
 const ROLE_LABEL = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Quản trị viên', EMPLOYEE: 'Nhân viên' };
 
@@ -95,9 +96,11 @@ function Home({ user, onChangePassword }) {
     <div className="card">
       <h2>Xin chào, {user.fullName}</h2>
       <p className="muted">Vai trò: <b>{ROLE_LABEL[user.role]}</b> · Tài khoản: {user.username}</p>
-      <p className="muted">Chức năng phòng thi và chấm điểm sẽ được bổ sung ở các bước tiếp theo.</p>
+      <p className="muted">Tài liệu/quy định, báo cáo và phòng thi trực tuyến sẽ được bổ sung ở các bước tiếp theo.</p>
       <button className="link" onClick={onChangePassword}><KeyRound size={14} /> Đổi mật khẩu</button>
     </div>
+    <MyExams />
+    {isAdmin && <ExamAdmin />}
     {isAdmin && <QuestionBank />}
     {isAdmin && <UserAdmin me={user} />}
   </section>;
@@ -131,6 +134,6 @@ export default function App() {
             : <span>HỆ THỐNG ĐÀO TẠO NỘI BỘ</span>}
     </div>
     {body}
-    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.2</span></footer>
+    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.3</span></footer>
   </main>;
 }
