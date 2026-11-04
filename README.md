@@ -8,7 +8,7 @@ Có đăng nhập thật (JWT trong cookie httpOnly), phân quyền phía máy c
 
 ## Cài đặt lần đầu (Windows)
 1. Tạo database rỗng, ví dụ `tth_quiz`, **bắt buộc mã hoá UTF8** (bản PostgreSQL cài trên Windows có thể mặc định WIN1252 → lỗi 500 khi lưu tiếng Việt):
-   `CREATE DATABASE tth_quiz ENCODING 'UTF8' TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C';` (hoặc locale tiếng Việt/English_United States.1252 → không dùng, chọn locale hỗ trợ UTF8 của hệ thống).
+   `CREATE DATABASE tth_quiz ENCODING 'UTF8' TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C';`.
 2. Mở PowerShell tại thư mục `tth-accounting-quiz`, chạy `npm install`.
 3. Sao chép `server/.env.example` thành `server/.env`, điền:
    - `DATABASE_URL` (mật khẩu PostgreSQL của bạn)
