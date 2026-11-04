@@ -7,7 +7,8 @@ Có đăng nhập thật (JWT trong cookie httpOnly), phân quyền phía máy c
 - PostgreSQL 14+ (bắt buộc từ bản 0.2)
 
 ## Cài đặt lần đầu (Windows)
-1. Tạo database rỗng, ví dụ `tth_quiz`.
+1. Tạo database rỗng, ví dụ `tth_quiz`, **bắt buộc mã hoá UTF8** (bản PostgreSQL cài trên Windows có thể mặc định WIN1252 → lỗi 500 khi lưu tiếng Việt):
+   `CREATE DATABASE tth_quiz ENCODING 'UTF8' TEMPLATE template0 LC_COLLATE 'C' LC_CTYPE 'C';` (hoặc locale tiếng Việt/English_United States.1252 → không dùng, chọn locale hỗ trợ UTF8 của hệ thống).
 2. Mở PowerShell tại thư mục `tth-accounting-quiz`, chạy `npm install`.
 3. Sao chép `server/.env.example` thành `server/.env`, điền:
    - `DATABASE_URL` (mật khẩu PostgreSQL của bạn)
@@ -43,14 +44,13 @@ Mọi kiểm tra quyền thực hiện ở server (`server/src/auth.js`), không
 - **Nhóm & giao đề**: ADMIN tạo nhóm nhân viên; khi tạo đề chọn "giao cho tất cả" hoặc một số nhóm. Server chỉ cho thấy/cho làm đề được giao (hoặc đề người đó đã có bài làm). Không xoá được nhóm đang được giao đề.
 - **Báo cáo**: xem kết quả từng đề, tải CSV (an toàn với Excel, chống CSV injection).
 - **Nhật ký hoạt động** (SUPER_ADMIN): đăng nhập, quản lý tài khoản/câu hỏi/đề thi, nộp bài, xuất báo cáo.
-- Test tự động cho chấm điểm và CSV: `npm test -w server`.
+- Test tự động: `npm test -w server` (chấm điểm, CSV, nhập CSV). Test tích hợp với PostgreSQL thật (RBAC, giao đề theo nhóm, làm bài, chấm điểm, báo cáo, nhật ký) chạy khi đặt `TEST_DATABASE_URL` trỏ tới một database RỖNG dành riêng cho test (dữ liệu sẽ bị xoá) đã chạy `prisma migrate deploy`.
 - Mỗi lần thêm bảng cần chạy `npm run db:migrate` (Render tự chạy khi deploy).
 
 ## Chưa làm
 - Tài liệu/quy định gắn với câu hỏi.
 - Phòng thi đồng bộ thời gian thực (Socket.io).
 - Báo cáo tổng hợp theo chủ đề/nhân viên, nhập trực tiếp file .xlsx (hiện cần lưu thành CSV UTF-8).
-- Test tích hợp với database thật.
 
 ## Logo
 `client/src/assets/tth-logo.jpg`.
