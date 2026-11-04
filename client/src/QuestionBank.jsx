@@ -1,6 +1,58 @@
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
 
+const esc = c => (/[",\n;]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
+const TEMPLATE = '\uFEFF' + [
+  ['Chủ đề', 'Loại', 'Độ khó', 'Câu hỏi', 'Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D', 'Đáp án E', 'Đáp án F', 'Đáp án đúng', 'Giải thích', 'Căn cứ'],
+  ['Thuế GTGT', 'Một đáp án', 'Dễ', 'Thuế suất GTGT phổ thông là bao nhiêu?', '5%', '8%', '10%', '15%', '', '', 'C', 'Mức phổ thông 10%', 'Luật thuế GTGT'],
+  ['Thuế GTGT', 'Nhiều đáp án', 'Trung bình', 'Chọn các khoản được khấu trừ', 'Khoản 1', 'Khoản 2', 'Khoản 3', '', '', '', 'A;C', '', ''],
+  ['Kế toán chung', 'Đúng/Sai', 'Khó', 'Tài sản = Nợ phải trả + Vốn chủ sở hữu', '', '', '', '', '', '', 'Đúng', '', '']
+].map(r => r.map(esc).join(',')).join('\r\n') + '\r\n';
+
+function downloadTemplate() {
+  const url = URL.createObjectURL(new Blob([TEMPLATE], { type: 'text/csv;charset=utf-8' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: 'mau-nhap-cau-hoi.csv' });
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function ImportPanel({ onDone, onCancel }) {
+  const [csv, setCsv] = useState('');
+  const [name, setName] = useState('');
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function pick(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    setName(f.name); setReport(null); setError(''); setCsv(await f.text());
+  }
+  async function run(commit) {
+    setBusy(true); setError('');
+    try {
+      const r = await api('/questions/import', { method: 'POST', body: { csv, commit } });
+      setReport(r);
+      if (commit && r.imported > 0) onDone(r.imported);
+    } catch (e) { setError(e.message); } finally { setBusy(false); }
+  }
+  return <div className="q-form">
+    <h3>Nhập câu hỏi từ CSV</h3>
+    <p className="muted">Lưu file Excel dạng CSV UTF-8. Cột "Đáp án đúng" ghi chữ cái (A, hoặc A;C cho nhiều đáp án). Câu nhập vào ở trạng thái Nháp. Tối đa 500 câu. <button type="button" className="link" onClick={downloadTemplate}>Tải file mẫu</button></p>
+    <input type="file" accept=".csv,text/csv" onChange={pick} />
+    {error && <div className="error" role="alert">{error}</div>}
+    {report && <div>
+      <p><b>{report.total}</b> dòng · <b>{report.valid}</b> hợp lệ · <b>{report.errors.length}</b> lỗi</p>
+      {report.errors.length > 0 && <><p className="muted">Sửa các lỗi sau rồi chọn lại file (không nhập gì cho đến khi hết lỗi):</p>
+        <ul>{report.errors.slice(0, 50).map(x => <li key={x.line}>Dòng {x.line}: {x.error}</li>)}</ul></>}
+    </div>}
+    <div className="q-actions">
+      <button type="button" className="submit small" disabled={!csv || busy} onClick={() => run(false)}>Kiểm tra</button>
+      <button type="button" className="submit small" disabled={!report || report.errors.length > 0 || report.valid === 0 || busy} onClick={() => run(true)}>Nhập {report?.valid || ''} câu</button>
+      <button type="button" className="link" onClick={onCancel}>Đóng</button>
+    </div>
+  </div>;
+}
+
 const TYPE_LABEL = { SINGLE: 'Một đáp án', MULTIPLE: 'Nhiều đáp án', TRUE_FALSE: 'Đúng/Sai' };
 const DIFF_LABEL = { EASY: 'Dễ', MEDIUM: 'Trung bình', HARD: 'Khó' };
 const STATUS_LABEL = { DRAFT: 'Nháp', ACTIVE: 'Đang dùng', ARCHIVED: 'Lưu trữ' };
@@ -78,6 +130,8 @@ export default function QuestionBank() {
   const [topics, setTopics] = useState([]);
   const [filter, setFilter] = useState({ topic: '', status: '', difficulty: '', q: '' });
   const [editing, setEditing] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
   async function load() {
@@ -100,7 +154,12 @@ export default function QuestionBank() {
     {editing
       ? <QuestionForm key={editing.id || 'new'} initial={editing} topics={topics}
           onSaved={() => { setEditing(null); load(); }} onCancel={() => setEditing(null)} />
-      : <button className="submit small" onClick={() => setEditing(blank())}>+ Thêm câu hỏi</button>}
+      : <div className="q-actions">
+          <button className="submit small" onClick={() => setEditing(blank())}>+ Thêm câu hỏi</button>
+          <button className="link" onClick={() => { setImporting(!importing); setNotice(''); }}>Nhập từ CSV</button>
+        </div>}
+    {importing && !editing && <ImportPanel onCancel={() => setImporting(false)} onDone={n => { setImporting(false); setNotice(`Đã nhập ${n} câu hỏi (trạng thái Nháp).`); load(); }} />}
+    {notice && <p className="muted">{notice}</p>}
     <div className="q-row q-filter">
       <input placeholder="Tìm theo nội dung…" value={filter.q} onChange={setFil('q')} />
       <select value={filter.topic} onChange={setFil('topic')}><option value="">Mọi chủ đề</option>{topics.map(t => <option key={t}>{t}</option>)}</select>

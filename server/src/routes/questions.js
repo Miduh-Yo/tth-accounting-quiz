@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import { audit } from '../audit.js';
+import { MAX_IMPORT_ROWS, parseImport, rowToQuestion } from '../importQuestions.js';
 import { requireAuth, requireRole } from '../auth.js';
 
 export const questionsRouter = Router();
@@ -45,6 +46,33 @@ questionsRouter.get('/', async (req, res, next) => {
       prisma.question.findMany({ select: { topic: true }, distinct: ['topic'], orderBy: { topic: 'asc' } })
     ]);
     res.json({ questions, topics: topics.map(t => t.topic) });
+  } catch (e) { next(e); }
+});
+
+// Nhập hàng loạt từ CSV. commit=false: chỉ kiểm tra; commit=true: nhập tất cả hoặc không nhập gì (câu hỏi vào ở trạng thái Nháp).
+questionsRouter.post('/import', async (req, res, next) => {
+  try {
+    const parsed = z.object({ csv: z.string().min(1).max(100_000), commit: z.boolean().default(false) }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Nội dung CSV không hợp lệ hoặc quá lớn (tối đa ~100KB)' });
+    const lines = parseImport(parsed.data.csv);
+    if (lines.length === 0) return res.status(400).json({ error: 'File không có dòng dữ liệu nào' });
+    if (lines.length > MAX_IMPORT_ROWS) return res.status(400).json({ error: `Tối đa ${MAX_IMPORT_ROWS} câu mỗi lần nhập` });
+
+    const errors = [], valid = [];
+    for (const { line, row } of lines) {
+      const m = rowToQuestion(row);
+      if (m.error) { errors.push({ line, error: m.error }); continue; }
+      const v = questionSchema.safeParse(m.data);
+      if (!v.success) errors.push({ line, error: v.error.issues[0].message });
+      else valid.push(v.data);
+    }
+    if (errors.length || !parsed.data.commit) return res.json({ total: lines.length, valid: valid.length, errors, imported: 0 });
+
+    await prisma.$transaction(valid.map(({ options, ...data }) => prisma.question.create({
+      data: { ...data, createdById: req.user.id, options: { create: options.map((o, i) => ({ ...o, position: i })) } }
+    })));
+    await audit(req, 'QUESTIONS_IMPORTED', { detail: `${valid.length} câu` });
+    res.json({ total: lines.length, valid: valid.length, errors: [], imported: valid.length });
   } catch (e) { next(e); }
 });
 

@@ -39,6 +39,7 @@ Mọi kiểm tra quyền thực hiện ở server (`server/src/auth.js`), không
 ## Chức năng (0.4)
 - **Ngân hàng câu hỏi** (ADMIN trở lên): chủ đề, loại (một/nhiều đáp án, Đúng/Sai), độ khó, giải thích, căn cứ. Không xoá cứng, chỉ "Lưu trữ".
 - **Đề thi**: tạo từ câu hỏi "Đang dùng", mở/đóng thi. Nhân viên làm bài có đồng hồ, mỗi người một lượt/đề; server tự tính hạn nộp (+30 giây bù mạng) và chấm điểm; đáp án đúng chỉ lộ sau khi nộp.
+- **Nhập câu hỏi từ CSV** (tối đa 500 câu/lần, có file mẫu): kiểm tra trước, chỉ nhập khi toàn bộ file hợp lệ; câu vào ở trạng thái Nháp. Nhận dấu phân cách `,` hoặc `;`.
 - **Nhóm & giao đề**: ADMIN tạo nhóm nhân viên; khi tạo đề chọn "giao cho tất cả" hoặc một số nhóm. Server chỉ cho thấy/cho làm đề được giao (hoặc đề người đó đã có bài làm). Không xoá được nhóm đang được giao đề.
 - **Báo cáo**: xem kết quả từng đề, tải CSV (an toàn với Excel, chống CSV injection).
 - **Nhật ký hoạt động** (SUPER_ADMIN): đăng nhập, quản lý tài khoản/câu hỏi/đề thi, nộp bài, xuất báo cáo.
@@ -48,7 +49,7 @@ Mọi kiểm tra quyền thực hiện ở server (`server/src/auth.js`), không
 ## Chưa làm
 - Tài liệu/quy định gắn với câu hỏi.
 - Phòng thi đồng bộ thời gian thực (Socket.io).
-- Báo cáo tổng hợp theo chủ đề/nhân viên, nhập câu hỏi hàng loạt (Excel/CSV).
+- Báo cáo tổng hợp theo chủ đề/nhân viên, nhập trực tiếp file .xlsx (hiện cần lưu thành CSV UTF-8).
 - Test tích hợp với database thật.
 
 ## Logo
