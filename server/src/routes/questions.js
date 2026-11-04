@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
+import { audit } from '../audit.js';
 import { requireAuth, requireRole } from '../auth.js';
 
 export const questionsRouter = Router();
@@ -57,6 +58,7 @@ questionsRouter.post('/', async (req, res, next) => {
         options: { create: options.map((o, i) => ({ ...o, position: i })) } },
       include
     });
+    await audit(req, 'QUESTION_CREATED', { targetType: 'Question', targetId: question.id, detail: question.topic });
     res.status(201).json({ question });
   } catch (e) { next(e); }
 });
@@ -76,6 +78,7 @@ questionsRouter.put('/:id', async (req, res, next) => {
         include
       })
     ]);
+    await audit(req, 'QUESTION_UPDATED', { targetType: 'Question', targetId: question.id, detail: `${question.topic}, ${question.status}` });
     res.json({ question });
   } catch (e) { next(e); }
 });
@@ -88,6 +91,7 @@ questionsRouter.delete('/:id', async (req, res, next) => {
     const question = await prisma.question.update({
       where: { id: req.params.id }, data: { status: 'ARCHIVED' }, include
     });
+    await audit(req, 'QUESTION_ARCHIVED', { targetType: 'Question', targetId: question.id });
     res.json({ question });
   } catch (e) { next(e); }
 });

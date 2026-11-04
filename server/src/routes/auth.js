@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { prisma } from '../db.js';
 import { config } from '../config.js';
 import { DUMMY_HASH, hashPassword, passwordSchema, verifyPassword } from '../password.js';
+import { audit } from '../audit.js';
 import { clearSessionCookie, publicUser, requireAuth, setSessionCookie, signSession } from '../auth.js';
 
 export const authRouter = Router();
@@ -25,7 +26,7 @@ authRouter.post('/login', loginLimiter, async (req, res, next) => {
     const user = await prisma.user.findUnique({ where: { username: username.toLowerCase() } });
     const ok = await verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
 
-    if (!user) return res.status(401).json(generic);
+    if (!user) { await audit(req, 'LOGIN_FAILED', { actor: null, detail: username.slice(0, 64) }); return res.status(401).json(generic); }
     if (user.lockedUntil && user.lockedUntil > new Date()) {
       return res.status(429).json({ error: 'Tài khoản tạm khoá do đăng nhập sai nhiều lần. Thử lại sau.' });
     }
@@ -36,12 +37,14 @@ authRouter.post('/login', loginLimiter, async (req, res, next) => {
         where: { id: user.id },
         data: { failedLogins: lock ? 0 : failed, lockedUntil: lock ? new Date(Date.now() + config.lockMinutes * 60000) : null }
       });
+      await audit(req, 'LOGIN_FAILED', { actor: user, targetType: 'User', targetId: user.id, detail: lock ? 'locked' : undefined });
       return res.status(401).json(generic);
     }
     // Chỉ báo trạng thái khoá/vô hiệu sau khi mật khẩu đúng, tránh lộ thông tin tài khoản.
     if (user.status !== 'ACTIVE') return res.status(403).json({ error: 'Tài khoản đã bị khoá hoặc vô hiệu hoá' });
     await prisma.user.update({ where: { id: user.id }, data: { failedLogins: 0, lockedUntil: null } });
     setSessionCookie(res, signSession(user));
+    await audit(req, 'LOGIN', { actor: user });
     res.json({ user: publicUser(user) });
   } catch (e) { next(e); }
 });
@@ -65,6 +68,7 @@ authRouter.post('/change-password', requireAuth, async (req, res, next) => {
       where: { id: req.user.id },
       data: { passwordHash: await hashPassword(newPassword), mustChangePassword: false, tokenVersion: { increment: 1 } }
     });
+    await audit(req, 'PASSWORD_CHANGED', { targetType: 'User', targetId: req.user.id });
     setSessionCookie(res, signSession(updated)); // các phiên cũ bị vô hiệu
     res.json({ user: publicUser(updated) });
   } catch (e) { next(e); }

@@ -38,6 +38,21 @@ model User {
   attempts           Attempt[]
 }
 
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  actorId    String?
+  actorName  String?
+  targetType String?
+  targetId   String?
+  detail     String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+}
+
 enum QuestionType {
   SINGLE
   MULTIPLE

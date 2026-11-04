@@ -15,6 +15,7 @@ import { authRouter } from './routes/auth.js';
 import { usersRouter } from './routes/users.js';
 import { questionsRouter } from './routes/questions.js';
 import { examsRouter } from './routes/exams.js';
+import { auditRouter } from './routes/audit.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -32,6 +33,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/questions', questionsRouter);
 app.use('/api/exams', examsRouter);
+app.use('/api/audit', auditRouter);
 
 // Production: phục vụ giao diện đã build cùng origin với API (cookie phiên hoạt động không cần CORS).
 const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/dist');

@@ -5,6 +5,7 @@ import { api } from './api.js';
 import UserAdmin from './UserAdmin.jsx';
 import QuestionBank from './QuestionBank.jsx';
 import { MyExams, ExamAdmin } from './Exams.jsx';
+import AuditLog from './AuditLog.jsx';
 
 const ROLE_LABEL = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Quản trị viên', EMPLOYEE: 'Nhân viên' };
 
@@ -103,6 +104,7 @@ function Home({ user, onChangePassword }) {
     {isAdmin && <ExamAdmin />}
     {isAdmin && <QuestionBank />}
     {isAdmin && <UserAdmin me={user} />}
+    {user.role === 'SUPER_ADMIN' && <AuditLog />}
   </section>;
 }
 

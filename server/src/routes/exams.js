@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
+import { audit } from '../audit.js';
 import { gradeQuestion, summarize } from '../grading.js';
 
 export const examsRouter = Router();
@@ -33,6 +34,7 @@ examsRouter.post('/', admin, async (req, res, next) => {
       data: { ...data, createdById: req.user.id,
         questions: { create: ids.map((questionId, position) => ({ questionId, position })) } }
     });
+    await audit(req, 'EXAM_CREATED', { targetType: 'Exam', targetId: exam.id, detail: exam.title });
     res.status(201).json({ exam });
   } catch (e) { next(e); }
 });
@@ -56,7 +58,9 @@ examsRouter.patch('/:id/status', admin, async (req, res, next) => {
     if (parsed.data.status === 'DRAFT' && exam._count.attempts > 0) {
       return res.status(400).json({ error: 'Đề đã có người làm, không thể chuyển về nháp' });
     }
-    res.json({ exam: await prisma.exam.update({ where: { id: exam.id }, data: { status: parsed.data.status } }) });
+    const updated = await prisma.exam.update({ where: { id: exam.id }, data: { status: parsed.data.status } });
+    await audit(req, 'EXAM_STATUS', { targetType: 'Exam', targetId: exam.id, detail: parsed.data.status });
+    res.json({ exam: updated });
   } catch (e) { next(e); }
 });
 
@@ -180,6 +184,7 @@ examsRouter.post('/attempts/:attemptId/submit', async (req, res, next) => {
     const late = Date.now() > deadline(attempt, attempt.exam).getTime() + GRACE_MS;
     // Nộp trễ quá thời gian cho phép: không nhận đáp án, chấm 0 câu.
     await finalize(attempt, late ? {} : parsed.data.answers, late);
+    await audit(req, 'EXAM_SUBMITTED', { targetType: 'Attempt', targetId: attempt.id, detail: late ? 'late' : undefined });
     res.json(await review(attempt.id));
   } catch (e) { next(e); }
 });

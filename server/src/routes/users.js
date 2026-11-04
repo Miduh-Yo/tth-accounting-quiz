@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
+import { audit } from '../audit.js';
 import { hashPassword, passwordSchema } from '../password.js';
 import { ROLE_RANK, publicUser, requireAuth, requireRole } from '../auth.js';
 
@@ -35,6 +36,7 @@ usersRouter.post('/', async (req, res, next) => {
       data: { username: d.username, fullName: d.fullName, email: d.email, role: d.role,
               passwordHash: await hashPassword(d.password), mustChangePassword: true }
     });
+    await audit(req, 'USER_CREATED', { targetType: 'User', targetId: user.id, detail: `${user.username} (${user.role})` });
     res.status(201).json({ user: publicUser(user) });
   } catch (e) {
     if (e.code === 'P2002') return res.status(409).json({ error: 'Tên đăng nhập hoặc email đã tồn tại' });
@@ -69,6 +71,8 @@ usersRouter.patch('/:id', async (req, res, next) => {
       data.tokenVersion = { increment: 1 };
     }
     const user = await prisma.user.update({ where: { id: target.id }, data });
+    await audit(req, 'USER_UPDATED', { targetType: 'User', targetId: user.id,
+      detail: [status && `status=${status}`, role && `role=${role}`, fullName && 'fullName', newPassword && 'password reset'].filter(Boolean).join(', ') });
     res.json({ user: publicUser(user) });
   } catch (e) { next(e); }
 });
