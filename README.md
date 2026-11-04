@@ -51,7 +51,7 @@ Mọi kiểm tra quyền thực hiện ở server (`server/src/auth.js`), không
 ## Chưa làm
 - Tài liệu/quy định gắn với câu hỏi.
 - Phòng thi đồng bộ thời gian thực (Socket.io).
-- nhập trực tiếp file .xlsx (hiện cần lưu thành CSV UTF-8).
+- Nhập trực tiếp file .xlsx (hiện cần lưu thành CSV UTF-8).
 
 ## Logo
 `client/src/assets/tth-logo.jpg`.
