@@ -97,9 +97,9 @@ examsRouter.get('/:id/results.csv', admin, async (req, res, next) => {
       include: { user: { select: { username: true, fullName: true } } }
     });
     const fmt = d => (d ? d.toISOString() : '');
-    const rows = [['Tài khoản', 'Họ tên', 'Bắt đầu', 'Nộp bài', 'Số câu đúng', 'Tổng số câu', 'Tỷ lệ (%)', 'Kết quả', 'Nộp trễ'],
+    const rows = [['Tài khoản', 'Họ tên', 'Bắt đầu', 'Nộp bài', 'Số câu đúng', 'Tổng số câu', 'Tỷ lệ (%)', 'Kết quả', 'Nộp trễ', 'Số lần rời tab'],
       ...attempts.map(a => [a.user.username, a.user.fullName, fmt(a.startedAt), fmt(a.submittedAt), a.correct, a.total, a.percent,
-        a.submittedAt ? (a.passed ? 'Đạt' : 'Chưa đạt') : 'Đang làm', a.late ? 'Có' : ''])];
+        a.submittedAt ? (a.passed ? 'Đạt' : 'Chưa đạt') : 'Đang làm', a.late ? 'Có' : '', a.focusLosses])];
     await audit(req, 'RESULTS_EXPORTED', { targetType: 'Exam', targetId: exam.id });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="ket-qua-${exam.id}.csv"`);
@@ -116,7 +116,7 @@ examsRouter.get('/:id/results', admin, async (req, res, next) => {
     });
     res.json({ results: attempts.map(a => ({
       id: a.id, username: a.user.username, fullName: a.user.fullName, startedAt: a.startedAt,
-      submittedAt: a.submittedAt, late: a.late, correct: a.correct, total: a.total, percent: a.percent, passed: a.passed
+      submittedAt: a.submittedAt, late: a.late, focusLosses: a.focusLosses, correct: a.correct, total: a.total, percent: a.percent, passed: a.passed
     })) });
   } catch (e) { next(e); }
 });
@@ -245,6 +245,18 @@ examsRouter.post('/attempts/:attemptId/submit', async (req, res, next) => {
 });
 
 // Xem lại kết quả: chỉ chủ bài làm hoặc quản trị viên, và chỉ sau khi đã nộp.
+// Thí sinh rời khỏi tab/cửa sổ khi đang làm bài: tăng bộ đếm để quản trị xem (không tự động trừ điểm).
+examsRouter.post('/attempts/:attemptId/focus-lost', async (req, res, next) => {
+  try {
+    const attempt = await prisma.attempt.findUnique({ where: { id: req.params.attemptId }, include: { exam: true } });
+    if (!attempt || attempt.userId !== req.user.id) return res.status(404).json({ error: 'Không tìm thấy bài làm' });
+    if (attempt.submittedAt || Date.now() > deadline(attempt, attempt.exam).getTime() + GRACE_MS) return res.json({ focusLosses: attempt.focusLosses });
+    if (attempt.focusLosses >= 1000) return res.json({ focusLosses: attempt.focusLosses });
+    const updated = await prisma.attempt.update({ where: { id: attempt.id }, data: { focusLosses: { increment: 1 } } });
+    res.json({ focusLosses: updated.focusLosses });
+  } catch (e) { next(e); }
+});
+
 examsRouter.get('/attempts/:attemptId/review', async (req, res, next) => {
   try {
     const attempt = await prisma.attempt.findUnique({ where: { id: req.params.attemptId } });

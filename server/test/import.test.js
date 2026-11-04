@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseCsv } from '../src/csvParse.js';
-import { rowToQuestion, parseImport } from '../src/importQuestions.js';
+import { rowToQuestion, parseImport, findDocument } from '../src/importQuestions.js';
 import { toCsv } from '../src/csv.js';
 
 test('parseCsv: ngoặc kép, xuống dòng trong ô, BOM, CRLF', () => {
@@ -31,4 +31,16 @@ test('rowToQuestion: nhiều đáp án, đúng/sai, lỗi', () => {
 });
 test('parseImport bỏ dòng tiêu đề, đánh số dòng', () => {
   assert.deepEqual(parseImport('h1,h2\nx,y\n').map(r => r.line), [2]);
+});
+
+test('findDocument: khớp số hiệu hoặc tên, không phân biệt hoa thường', () => {
+  const docs = [{ id: '1', code: '78/2014/TT-BTC', title: 'Thông tư 78' }, { id: '2', code: null, title: 'Quy chế nội bộ' }];
+  assert.equal(findDocument(docs, ' 78/2014/tt-btc ').id, '1');
+  assert.equal(findDocument(docs, 'quy chế NỘI BỘ').id, '2');
+  assert.equal(findDocument(docs, 'không có'), null);
+  assert.equal(findDocument(docs, ''), null);
+});
+test('rowToQuestion trả về documentRef từ cột 14', () => {
+  const r = rowToQuestion(['T', 'Một đáp án', '', 'Q', 'a', 'b', '', '', '', '', 'A', '', '', 'Thông tư 78']);
+  assert.equal(r.documentRef, 'Thông tư 78');
 });

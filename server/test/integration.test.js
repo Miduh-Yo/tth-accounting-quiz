@@ -175,6 +175,21 @@ test('luồng đầy đủ: RBAC, câu hỏi, nhập CSV, nhóm, giao đề, là
     assert.deepEqual([r.body.attempt.late, r.body.attempt.correct], [true, 0]);
   });
 
+  await t.test('cảnh báo rời tab: đếm trong lúc làm bài, chỉ chủ bài, dừng sau khi nộp, hiện ở kết quả', async () => {
+    const ex = await admin.post('/exams', { title: 'Đề rời tab', durationMinutes: 5, questionIds: [ids.s], assignAll: true });
+    await admin.patch(`/exams/${ex.body.exam.id}/status`, { status: 'PUBLISHED' });
+    const s = await e2.post(`/exams/${ex.body.exam.id}/start`);
+    const url = `/exams/attempts/${s.body.attemptId}/focus-lost`;
+    assert.equal((await e2.post(url)).body.focusLosses, 1);
+    assert.equal((await e2.post(url)).body.focusLosses, 2);
+    assert.equal((await admin.post(url)).status, 404);
+    await e2.post(`/exams/attempts/${s.body.attemptId}/submit`, { answers: {} });
+    assert.equal((await e2.post(url)).body.focusLosses, 2);
+    const row = (await admin.get(`/exams/${ex.body.exam.id}/results`)).body.results[0];
+    assert.equal(row.focusLosses, 2);
+    assert.ok((await admin.get(`/exams/${ex.body.exam.id}/results.csv`, true)).text.includes('Số lần rời tab'));
+  });
+
   await t.test('báo cáo CSV & nhật ký', async () => {
     const csv = await admin.get(`/exams/${exam.id}/results.csv`, true);
     assert.equal(csv.status, 200);
@@ -189,15 +204,18 @@ test('luồng đầy đủ: RBAC, câu hỏi, nhập CSV, nhóm, giao đề, là
 
   await t.test('báo cáo theo chủ đề và nhân viên', async () => {
     assert.equal((await e2.get('/reports/topics')).status, 403);
-    const tp = (await admin.get('/reports/topics')).body.topics;
-    // Bài của nv1: 2/3 đúng, bài trễ của nv2: 0/1 — cùng chủ đề "Thuế" => 2/4
-    assert.deepEqual(tp.map(x => [x.topic, x.correct, x.total, x.percent]), [['Thuế', 2, 4, 50]]);
+    const tp = (await admin.get(`/reports/topics?examId=${exam.id}`)).body.topics;
+    // Đề nhóm: nv1 đúng 2/3 câu, cùng chủ đề "Thuế"
+    assert.deepEqual(tp.map(x => [x.topic, x.correct, x.total, x.percent]), [['Thuế', 2, 3, 67]]);
+    const all = (await admin.get('/reports/topics')).body.topics;
+    assert.equal(all.length, 1);
+    assert.ok(all[0].total > 3 && all[0].percent < 100); // gộp thêm các bài khác
     const users = (await admin.get('/users')).body.users;
     const nv1 = users.find(u => u.username === 'nv1').id;
     assert.equal((await admin.get(`/reports/topics?userId=${nv1}`)).body.topics[0].percent, 67);
     assert.equal((await admin.get(`/reports/topics?examId=${exam.id}`)).body.topics[0].total, 3);
-    const emp = (await admin.get('/reports/employees')).body.employees;
-    assert.deepEqual(emp.map(x => [x.username, x.attempts, x.avgPercent, x.passed]), [['nv2', 1, 0, 0], ['nv1', 1, 67, 0]]);
+    const emp = (await admin.get(`/reports/employees?examId=${exam.id}`)).body.employees;
+    assert.deepEqual(emp.map(x => [x.username, x.attempts, x.avgPercent, x.passed]), [['nv1', 1, 67, 0]]);
   });
 
   await t.test('tài liệu: chặn URL nguy hiểm, phân quyền, gắn vào câu hỏi và hiện khi xem lại', async () => {
@@ -267,6 +285,16 @@ test('luồng đầy đủ: RBAC, câu hỏi, nhập CSV, nhóm, giao đề, là
       assert.equal((await e2.post(`/exams/attempts/${run.body.attemptId}/submit`, { answers: { [ids.s]: [optA] } })).status, 200);
       await sub;
     } finally { sMon.close(); sNv.close(); }
+  });
+
+  await t.test('nhập CSV với cột Tài liệu: khớp theo số hiệu, báo lỗi nếu không thấy', async () => {
+    const head = 'Chủ đề,Loại,Độ khó,Câu hỏi,A,B,C,D,E,F,Đúng,GT,CC,Tài liệu\n';
+    const miss = await admin.post('/questions/import', { csv: head + 'T,Một đáp án,Dễ,QD1,a,b,,,,,A,,,Không có\n' });
+    assert.match(miss.body.errors[0].error, /Không tìm thấy tài liệu/);
+    const ok = await admin.post('/questions/import', { csv: head + 'T,Một đáp án,Dễ,QD2,a,b,,,,,A,,Điều 3,78/2014/tt-btc\n', commit: true });
+    assert.equal(ok.body.imported, 1);
+    const got = (await admin.get('/questions?q=QD2')).body.questions[0];
+    assert.equal(got.document.code, '78/2014/TT-BTC');
   });
 
   await t.test('khoá tài khoản làm mất hiệu lực phiên', async () => {

@@ -150,6 +150,7 @@ model Attempt {
   startedAt   DateTime        @default(now())
   submittedAt DateTime?
   late        Boolean         @default(false)
+  focusLosses Int             @default(0)
   correct     Int?
   total       Int?
   percent     Int?

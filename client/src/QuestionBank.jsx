@@ -3,10 +3,10 @@ import { api } from './api.js';
 
 const esc = c => (/[",\n;]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
 const TEMPLATE = '\uFEFF' + [
-  ['Chủ đề', 'Loại', 'Độ khó', 'Câu hỏi', 'Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D', 'Đáp án E', 'Đáp án F', 'Đáp án đúng', 'Giải thích', 'Căn cứ'],
-  ['Thuế GTGT', 'Một đáp án', 'Dễ', 'Thuế suất GTGT phổ thông là bao nhiêu?', '5%', '8%', '10%', '15%', '', '', 'C', 'Mức phổ thông 10%', 'Luật thuế GTGT'],
-  ['Thuế GTGT', 'Nhiều đáp án', 'Trung bình', 'Chọn các khoản được khấu trừ', 'Khoản 1', 'Khoản 2', 'Khoản 3', '', '', '', 'A;C', '', ''],
-  ['Kế toán chung', 'Đúng/Sai', 'Khó', 'Tài sản = Nợ phải trả + Vốn chủ sở hữu', '', '', '', '', '', '', 'Đúng', '', '']
+  ['Chủ đề', 'Loại', 'Độ khó', 'Câu hỏi', 'Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D', 'Đáp án E', 'Đáp án F', 'Đáp án đúng', 'Giải thích', 'Căn cứ', 'Tài liệu'],
+  ['Thuế GTGT', 'Một đáp án', 'Dễ', 'Thuế suất GTGT phổ thông là bao nhiêu?', '5%', '8%', '10%', '15%', '', '', 'C', 'Mức phổ thông 10%', 'Điều 8', ''],
+  ['Thuế GTGT', 'Nhiều đáp án', 'Trung bình', 'Chọn các khoản được khấu trừ', 'Khoản 1', 'Khoản 2', 'Khoản 3', '', '', '', 'A;C', '', '', ''],
+  ['Kế toán chung', 'Đúng/Sai', 'Khó', 'Tài sản = Nợ phải trả + Vốn chủ sở hữu', '', '', '', '', '', '', 'Đúng', '', '', '']
 ].map(r => r.map(esc).join(',')).join('\r\n') + '\r\n';
 
 function downloadTemplate() {
@@ -37,7 +37,7 @@ function ImportPanel({ onDone, onCancel }) {
   }
   return <div className="q-form">
     <h3>Nhập câu hỏi từ CSV</h3>
-    <p className="muted">Lưu file Excel dạng CSV UTF-8. Cột "Đáp án đúng" ghi chữ cái (A, hoặc A;C cho nhiều đáp án). Câu nhập vào ở trạng thái Nháp. Tối đa 500 câu. <button type="button" className="link" onClick={downloadTemplate}>Tải file mẫu</button></p>
+    <p className="muted">Lưu file Excel dạng CSV UTF-8. Cột "Đáp án đúng" ghi chữ cái (A, hoặc A;C cho nhiều đáp án). Câu nhập vào ở trạng thái Nháp. Cột "Tài liệu" ghi số hiệu hoặc tên tài liệu có trong thư viện (không bắt buộc). Tối đa 500 câu. <button type="button" className="link" onClick={downloadTemplate}>Tải file mẫu</button></p>
     <input type="file" accept=".csv,text/csv" onChange={pick} />
     {error && <div className="error" role="alert">{error}</div>}
     {report && <div>

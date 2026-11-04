@@ -1,7 +1,7 @@
 import { parseCsv } from './csvParse.js';
 
 // Cột cố định: Chủ đề, Loại, Độ khó, Câu hỏi, Đáp án A..F, Đáp án đúng, Giải thích, Căn cứ. Dòng đầu là tiêu đề.
-export const IMPORT_HEADER = ['Chủ đề', 'Loại', 'Độ khó', 'Câu hỏi', 'Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D', 'Đáp án E', 'Đáp án F', 'Đáp án đúng', 'Giải thích', 'Căn cứ'];
+export const IMPORT_HEADER = ['Chủ đề', 'Loại', 'Độ khó', 'Câu hỏi', 'Đáp án A', 'Đáp án B', 'Đáp án C', 'Đáp án D', 'Đáp án E', 'Đáp án F', 'Đáp án đúng', 'Giải thích', 'Căn cứ', 'Tài liệu'];
 export const MAX_IMPORT_ROWS = 500;
 
 const norm = s => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
@@ -34,11 +34,19 @@ export function rowToQuestion(r) {
   }
   if (!correctIdx.length) return { error: 'Thiếu đáp án đúng' };
   return {
+    documentRef: c(13),
     data: {
       topic: c(0), type, difficulty, status: 'DRAFT', content: c(3), explanation: c(11), reference: c(12),
       options: texts.map((text, i) => ({ text, isCorrect: correctIdx.includes(i) }))
     }
   };
+}
+
+// Khớp tài liệu theo số hiệu hoặc tên (không phân biệt hoa thường). Trả về document hoặc null.
+export function findDocument(docs, ref) {
+  const k = String(ref ?? '').trim().toLowerCase();
+  if (!k) return null;
+  return docs.find(d => d.code && d.code.trim().toLowerCase() === k) ?? docs.find(d => d.title.trim().toLowerCase() === k) ?? null;
 }
 
 export function parseImport(text) {

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
 import { audit } from '../audit.js';
-import { MAX_IMPORT_ROWS, parseImport, rowToQuestion } from '../importQuestions.js';
+import { MAX_IMPORT_ROWS, findDocument, parseImport, rowToQuestion } from '../importQuestions.js';
 import { requireAuth, requireRole } from '../auth.js';
 
 export const questionsRouter = Router();
@@ -61,11 +61,18 @@ questionsRouter.post('/import', async (req, res, next) => {
     if (lines.length === 0) return res.status(400).json({ error: 'File không có dòng dữ liệu nào' });
     if (lines.length > MAX_IMPORT_ROWS) return res.status(400).json({ error: `Tối đa ${MAX_IMPORT_ROWS} câu mỗi lần nhập` });
 
+    const docs = await prisma.document.findMany({ where: { status: 'ACTIVE' }, select: { id: true, code: true, title: true } });
     const errors = [], valid = [];
     for (const { line, row } of lines) {
       const m = rowToQuestion(row);
       if (m.error) { errors.push({ line, error: m.error }); continue; }
-      const v = questionSchema.safeParse(m.data);
+      let documentId;
+      if (m.documentRef) {
+        const d = findDocument(docs, m.documentRef);
+        if (!d) { errors.push({ line, error: `Không tìm thấy tài liệu "${m.documentRef}" (khớp theo số hiệu hoặc tên)` }); continue; }
+        documentId = d.id;
+      }
+      const v = questionSchema.safeParse({ ...m.data, documentId });
       if (!v.success) errors.push({ line, error: v.error.issues[0].message });
       else valid.push(v.data);
     }

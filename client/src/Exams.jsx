@@ -16,6 +16,17 @@ function TakeExam({ session, onFinish }) {
   const answersRef = useRef(answers);
   answersRef.current = answers;
   const sent = useRef(false);
+  const [focusLost, setFocusLost] = useState(0);
+  // Ghi nhận khi thí sinh chuyển tab/cửa sổ (chỉ cảnh báo và báo cho quản trị, không tự trừ điểm).
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState !== 'hidden' || sent.current) return;
+      setFocusLost(n => n + 1);
+      api(`/exams/attempts/${session.attemptId}/focus-lost`, { method: 'POST' }).catch(() => {});
+    };
+    document.addEventListener('visibilitychange', onHide);
+    return () => document.removeEventListener('visibilitychange', onHide);
+  }, [session.attemptId]);
 
   async function submit() {
     if (sent.current) return;
@@ -43,6 +54,7 @@ function TakeExam({ session, onFinish }) {
 
   return <div className="card">
     <div className="q-actions"><h2 style={{ flex: 1 }}>{session.exam.title}</h2><b>⏱ {mm}:{ss}</b></div>
+    {focusLost > 0 && <div className="error" role="alert">Bạn đã rời khỏi màn hình làm bài {focusLost} lần. Việc này được ghi nhận và quản trị viên có thể xem.</div>}
     {session.questions.map((q, i) => <div key={q.id} className="take-q">
       <p><b>Câu {i + 1}.</b> {q.content} {q.type === 'MULTIPLE' && <em className="muted">(chọn nhiều đáp án)</em>}</p>
       {q.options.map(o => <label key={o.id} className="q-opt">
@@ -213,14 +225,15 @@ export function ExamAdmin() {
     {results && <>
       <h3>Kết quả: {results.exam.title} <a className="link" href={`/api/exams/${results.exam.id}/results.csv`}>Tải CSV</a> <button className="link" onClick={() => setResults(null)}>Ẩn</button></h3>
       <div className="table-wrap"><table>
-        <thead><tr><th>Nhân viên</th><th>Điểm</th><th>Kết quả</th><th>Trạng thái</th></tr></thead>
+        <thead><tr><th>Nhân viên</th><th>Điểm</th><th>Kết quả</th><th>Trạng thái</th><th>Rời tab</th></tr></thead>
         <tbody>{results.rows.map(r => <tr key={r.id}>
           <td>{r.fullName} ({r.username})</td>
           <td>{r.submittedAt ? `${r.correct}/${r.total} (${r.percent}%)` : '—'}</td>
           <td>{r.submittedAt ? (r.passed ? 'Đạt' : 'Chưa đạt') : '—'}</td>
           <td>{r.submittedAt ? (r.late ? 'Nộp trễ' : 'Đã nộp') : 'Đang làm'}</td>
+          <td>{r.focusLosses || ''}</td>
         </tr>)}
-        {results.rows.length === 0 && <tr><td colSpan={4} className="muted">Chưa có ai làm bài.</td></tr>}</tbody>
+        {results.rows.length === 0 && <tr><td colSpan={5} className="muted">Chưa có ai làm bài.</td></tr>}</tbody>
       </table></div>
     </>}
   </div>;
