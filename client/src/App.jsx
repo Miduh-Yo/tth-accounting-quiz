@@ -7,6 +7,7 @@ import QuestionBank from './QuestionBank.jsx';
 import { MyExams, ExamAdmin } from './Exams.jsx';
 import AuditLog from './AuditLog.jsx';
 import GroupAdmin from './Groups.jsx';
+import Reports from './Reports.jsx';
 
 const ROLE_LABEL = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Quản trị viên', EMPLOYEE: 'Nhân viên' };
 
@@ -104,6 +105,7 @@ function Home({ user, onChangePassword }) {
     <MyExams />
     {isAdmin && <GroupAdmin />}
     {isAdmin && <ExamAdmin />}
+    {isAdmin && <Reports />}
     {isAdmin && <QuestionBank />}
     {isAdmin && <UserAdmin me={user} />}
     {user.role === 'SUPER_ADMIN' && <AuditLog />}
@@ -138,6 +140,6 @@ export default function App() {
             : <span>HỆ THỐNG ĐÀO TẠO NỘI BỘ</span>}
     </div>
     {body}
-    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.4</span></footer>
+    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.5</span></footer>
   </main>;
 }

@@ -1,4 +1,4 @@
-# TTH Accounting Quiz – Phiên bản 0.4
+# TTH Accounting Quiz – Phiên bản 0.5
 
 Có đăng nhập thật (JWT trong cookie httpOnly), phân quyền phía máy chủ (RBAC), quản lý tài khoản, khởi tạo Super Admin an toàn, Socket.io yêu cầu đăng nhập.
 
@@ -37,12 +37,13 @@ Mọi kiểm tra quyền thực hiện ở server (`server/src/auth.js`), không
 - `helmet`, giới hạn kích thước body, kiểm tra dữ liệu bằng `zod`.
 - Không có tài khoản/mật khẩu mặc định trong mã nguồn.
 
-## Chức năng (0.4)
+## Chức năng (0.5)
 - **Ngân hàng câu hỏi** (ADMIN trở lên): chủ đề, loại (một/nhiều đáp án, Đúng/Sai), độ khó, giải thích, căn cứ. Không xoá cứng, chỉ "Lưu trữ".
 - **Đề thi**: tạo từ câu hỏi "Đang dùng", mở/đóng thi. Nhân viên làm bài có đồng hồ, mỗi người một lượt/đề; server tự tính hạn nộp (+30 giây bù mạng) và chấm điểm; đáp án đúng chỉ lộ sau khi nộp.
 - **Nhập câu hỏi từ CSV** (tối đa 500 câu/lần, có file mẫu): kiểm tra trước, chỉ nhập khi toàn bộ file hợp lệ; câu vào ở trạng thái Nháp. Nhận dấu phân cách `,` hoặc `;`.
 - **Nhóm & giao đề**: ADMIN tạo nhóm nhân viên; khi tạo đề chọn "giao cho tất cả" hoặc một số nhóm. Server chỉ cho thấy/cho làm đề được giao (hoặc đề người đó đã có bài làm). Không xoá được nhóm đang được giao đề.
 - **Báo cáo**: xem kết quả từng đề, tải CSV (an toàn với Excel, chống CSV injection).
+- **Báo cáo tổng hợp** (ADMIN trở lên): tỷ lệ đúng theo chủ đề (yếu → mạnh), lọc theo đề và theo nhân viên; điểm trung bình và số bài đạt của từng nhân viên.
 - **Nhật ký hoạt động** (SUPER_ADMIN): đăng nhập, quản lý tài khoản/câu hỏi/đề thi, nộp bài, xuất báo cáo.
 - Test tự động: `npm test -w server` (chấm điểm, CSV, nhập CSV). Test tích hợp với PostgreSQL thật (RBAC, giao đề theo nhóm, làm bài, chấm điểm, báo cáo, nhật ký) chạy khi đặt `TEST_DATABASE_URL` trỏ tới một database RỖNG dành riêng cho test (dữ liệu sẽ bị xoá) đã chạy `prisma migrate deploy`.
 - Mỗi lần thêm bảng cần chạy `npm run db:migrate` (Render tự chạy khi deploy).
@@ -50,7 +51,7 @@ Mọi kiểm tra quyền thực hiện ở server (`server/src/auth.js`), không
 ## Chưa làm
 - Tài liệu/quy định gắn với câu hỏi.
 - Phòng thi đồng bộ thời gian thực (Socket.io).
-- Báo cáo tổng hợp theo chủ đề/nhân viên, nhập trực tiếp file .xlsx (hiện cần lưu thành CSV UTF-8).
+- nhập trực tiếp file .xlsx (hiện cần lưu thành CSV UTF-8).
 
 ## Logo
 `client/src/assets/tth-logo.jpg`.

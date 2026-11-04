@@ -173,6 +173,19 @@ test('luồng đầy đủ: RBAC, câu hỏi, nhập CSV, nhóm, giao đề, là
     }
   });
 
+  await t.test('báo cáo theo chủ đề và nhân viên', async () => {
+    assert.equal((await e2.get('/reports/topics')).status, 403);
+    const tp = (await admin.get('/reports/topics')).body.topics;
+    // Bài của nv1: 2/3 đúng, bài trễ của nv2: 0/1 — cùng chủ đề "Thuế" => 2/4
+    assert.deepEqual(tp.map(x => [x.topic, x.correct, x.total, x.percent]), [['Thuế', 2, 4, 50]]);
+    const users = (await admin.get('/users')).body.users;
+    const nv1 = users.find(u => u.username === 'nv1').id;
+    assert.equal((await admin.get(`/reports/topics?userId=${nv1}`)).body.topics[0].percent, 67);
+    assert.equal((await admin.get(`/reports/topics?examId=${exam.id}`)).body.topics[0].total, 3);
+    const emp = (await admin.get('/reports/employees')).body.employees;
+    assert.deepEqual(emp.map(x => [x.username, x.attempts, x.avgPercent, x.passed]), [['nv2', 1, 0, 0], ['nv1', 1, 67, 0]]);
+  });
+
   await t.test('khoá tài khoản làm mất hiệu lực phiên', async () => {
     const users = (await admin.get('/users')).body.users;
     assert.equal((await admin.patch(`/users/${users.find(u => u.username === 'nv1').id}`, { status: 'LOCKED' })).status, 200);

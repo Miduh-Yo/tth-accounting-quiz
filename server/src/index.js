@@ -17,6 +17,7 @@ import { questionsRouter } from './routes/questions.js';
 import { examsRouter } from './routes/exams.js';
 import { auditRouter } from './routes/audit.js';
 import { groupsRouter } from './routes/groups.js';
+import { reportsRouter } from './routes/reports.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -28,7 +29,7 @@ app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'TTH Accounting Quiz API', version: '0.4.0' });
+  res.json({ status: 'ok', service: 'TTH Accounting Quiz API', version: '0.5.0' });
 });
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
@@ -36,6 +37,7 @@ app.use('/api/questions', questionsRouter);
 app.use('/api/exams', examsRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/groups', groupsRouter);
+app.use('/api/reports', reportsRouter);
 
 // Production: phục vụ giao diện đã build cùng origin với API (cookie phiên hoạt động không cần CORS).
 const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/dist');
