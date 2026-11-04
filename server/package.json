@@ -13,6 +13,7 @@
     "seed:super-admin": "node scripts/seed-super-admin.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
     "@prisma/client": "^6.1.0",
     "bcryptjs": "^2.4.3",
     "cookie": "^0.7.2",
@@ -23,6 +24,7 @@
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
+    "mammoth": "^1.13.0",
     "prisma": "^6.1.0",
     "socket.io": "^4.8.1",
     "zod": "^3.24.1"

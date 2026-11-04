@@ -131,12 +131,66 @@ function QuestionForm({ initial, topics, onSaved, onCancel }) {
   </form>;
 }
 
+function GeneratePanel({ topics, onDone, onCancel }) {
+  const [docs, setDocs] = useState([]);
+  const [f, setF] = useState({ topic: '', count: 5, difficulty: '', documentId: '' });
+  const [text, setText] = useState('');
+  const [file, setFile] = useState(null); // { filename, text } hoặc { filename, base64 }
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { api('/documents').then(d => setDocs(d.documents)).catch(() => {}); }, []);
+
+  async function pick(e) {
+    const picked = e.target.files[0];
+    setError(''); setFile(null);
+    if (!picked) return;
+    const ext = picked.name.toLowerCase().split('.').pop();
+    if (picked.size > 4 * 1024 * 1024) return setError('File quá lớn (tối đa 4MB).');
+    if (ext === 'txt' || ext === 'md') setFile({ filename: picked.name, text: await picked.text() });
+    else if (ext === 'docx') {
+      const bytes = new Uint8Array(await picked.arrayBuffer());
+      let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      setFile({ filename: picked.name, base64: btoa(bin) });
+    } else setError('Chỉ hỗ trợ .txt, .md, .docx. Với NotebookLM: xuất/sao chép ghi chú ra văn bản rồi dán hoặc lưu thành .txt/.md.');
+  }
+  async function run(event) {
+    event.preventDefault(); setError(''); setBusy(true);
+    try {
+      const body = { topic: f.topic, count: Number(f.count), documentId: f.documentId || undefined, difficulty: f.difficulty || undefined,
+        ...(file ? file : { text }) };
+      const r = await api('/questions/generate', { method: 'POST', body });
+      onDone(r);
+    } catch (e) { setError(e.message); } finally { setBusy(false); }
+  }
+  const set = k => e => setF({ ...f, [k]: e.target.value });
+  return <form className="q-form" onSubmit={run}>
+    <h3>Sinh câu hỏi bằng AI từ ghi chú</h3>
+    <p className="muted">Dán nội dung ghi chú/quy định (hoặc tải file .txt, .md, .docx; tối đa ~60.000 ký tự). AI chỉ dùng thông tin trong văn bản; câu hỏi vào ở trạng thái <b>Nháp</b> — bạn cần rà soát từng câu trước khi chuyển sang "Đang dùng".</p>
+    <div className="q-row">
+      <input list="topics-gen" placeholder="Chủ đề" value={f.topic} onChange={set('topic')} required />
+      <datalist id="topics-gen">{topics.map(t => <option key={t} value={t} />)}</datalist>
+      <label>Số câu<input type="number" min="1" max="20" value={f.count} onChange={set('count')} /></label>
+      <select value={f.difficulty} onChange={set('difficulty')}><option value="">Độ khó: tuỳ AI</option><option value="EASY">Dễ</option><option value="MEDIUM">Trung bình</option><option value="HARD">Khó</option></select>
+      <select value={f.documentId} onChange={set('documentId')}><option value="">— Không gắn tài liệu —</option>{docs.map(d => <option key={d.id} value={d.id}>{d.code ? `${d.code} · ` : ''}{d.title}</option>)}</select>
+    </div>
+    <input type="file" accept=".txt,.md,.docx" onChange={pick} />
+    {file ? <p className="muted">Đã chọn file: <b>{file.filename}</b></p>
+      : <textarea rows={8} placeholder="…hoặc dán nội dung ghi chú vào đây" value={text} onChange={e => setText(e.target.value)} />}
+    {error && <div className="error" role="alert">{error}</div>}
+    <div className="q-actions">
+      <button className="submit small" type="submit" disabled={busy || (!file && text.trim().length === 0)}>{busy ? 'Đang sinh câu hỏi… (có thể mất tới 1 phút)' : 'Sinh câu hỏi'}</button>
+      <button type="button" className="link" onClick={onCancel} disabled={busy}>Đóng</button>
+    </div>
+  </form>;
+}
+
 export default function QuestionBank() {
   const [questions, setQuestions] = useState([]);
   const [topics, setTopics] = useState([]);
   const [filter, setFilter] = useState({ topic: '', status: '', difficulty: '', q: '' });
   const [editing, setEditing] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
 
@@ -162,9 +216,12 @@ export default function QuestionBank() {
           onSaved={() => { setEditing(null); load(); }} onCancel={() => setEditing(null)} />
       : <div className="q-actions">
           <button className="submit small" onClick={() => setEditing(blank())}>+ Thêm câu hỏi</button>
-          <button className="link" onClick={() => { setImporting(!importing); setNotice(''); }}>Nhập từ CSV</button>
+          <button className="link" onClick={() => { setImporting(!importing); setGenerating(false); setNotice(''); }}>Nhập từ CSV</button>
+          <button className="link" onClick={() => { setGenerating(!generating); setImporting(false); setNotice(''); }}>Sinh bằng AI</button>
         </div>}
     {importing && !editing && <ImportPanel onCancel={() => setImporting(false)} onDone={n => { setImporting(false); setNotice(`Đã nhập ${n} câu hỏi (trạng thái Nháp).`); load(); }} />}
+    {generating && !editing && <GeneratePanel topics={topics} onCancel={() => setGenerating(false)}
+      onDone={r => { setGenerating(false); setNotice(`AI đã tạo ${r.created} câu hỏi (trạng thái Nháp)${r.skipped ? `, bỏ ${r.skipped} câu không hợp lệ` : ''}. Hãy lọc "Nháp" để rà soát.`); setFilter(f => ({ ...f, status: 'DRAFT' })); }} />}
     {notice && <p className="muted">{notice}</p>}
     <div className="q-row q-filter">
       <input placeholder="Tìm theo nội dung…" value={filter.q} onChange={setFil('q')} />

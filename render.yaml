@@ -26,3 +26,6 @@ services:
         value: "true"
       - key: CLIENT_ORIGIN
         sync: false
+      # Tuỳ chọn: bật tính năng sinh câu hỏi bằng AI. Đặt khoá trong Render Dashboard, không ghi vào mã nguồn.
+      - key: ANTHROPIC_API_KEY
+        sync: false

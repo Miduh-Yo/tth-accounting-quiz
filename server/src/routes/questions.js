@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db.js';
+import rateLimit from 'express-rate-limit';
 import { audit } from '../audit.js';
+import { GeneratorError, MAX_GENERATE, aiConfigured, generateQuestions } from '../generator.js';
+import { extractText } from '../extractText.js';
 import { MAX_IMPORT_ROWS, findDocument, parseImport, rowToQuestion } from '../importQuestions.js';
 import { requireAuth, requireRole } from '../auth.js';
 
@@ -14,7 +17,7 @@ const optionSchema = z.object({
   isCorrect: z.boolean()
 });
 
-const questionSchema = z.object({
+export const questionSchema = z.object({
   topic: z.string().trim().min(1, 'Nhập chủ đề').max(100),
   type: z.enum(['SINGLE', 'MULTIPLE', 'TRUE_FALSE']),
   difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM'),
@@ -50,6 +53,57 @@ questionsRouter.get('/', async (req, res, next) => {
     ]);
     res.json({ questions, topics: topics.map(t => t.topic) });
   } catch (e) { next(e); }
+});
+
+// Sinh câu hỏi bằng AI từ văn bản/file ghi chú. Câu hỏi vào ở trạng thái Nháp để quản trị rà soát.
+const generateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, limit: 15, standardHeaders: true, legacyHeaders: false,
+  keyGenerator: req => req.user.id,
+  message: { error: 'Đã dùng quá nhiều lượt sinh câu hỏi trong 1 giờ, thử lại sau.' }
+});
+const generateSchema = z.object({
+  topic: z.string().trim().min(1, 'Nhập chủ đề').max(100),
+  count: z.number().int().min(1).max(MAX_GENERATE).default(5),
+  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).optional(),
+  documentId: z.string().optional().transform(v => v || null),
+  filename: z.string().max(255).optional(),
+  text: z.string().max(200_000).optional(),
+  base64: z.string().max(6_000_000).optional()
+});
+
+// Chuyển kết quả AI thành câu hỏi hợp lệ (cùng quy tắc kiểm tra như thêm tay); câu lỗi bị bỏ qua và đếm lại.
+export function shapeGenerated(raw, { topic, documentId }) {
+  const valid = []; let skipped = 0;
+  for (const r of raw) {
+    const v = questionSchema.safeParse({ ...r, topic, documentId, status: 'DRAFT' });
+    if (v.success) valid.push(v.data); else skipped++;
+  }
+  return { valid, skipped };
+}
+
+questionsRouter.post('/generate', generateLimiter, async (req, res, next) => {
+  try {
+    if (!aiConfigured()) return res.status(503).json({ error: 'Chưa cấu hình ANTHROPIC_API_KEY trên máy chủ nên chưa dùng được tính năng này.' });
+    const parsed = generateSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+    const d = parsed.data;
+    if (await docMissing(d.documentId)) return res.status(400).json({ error: 'Tài liệu không tồn tại' });
+    const text = await extractText({ filename: d.filename, text: d.text, base64: d.base64 });
+    if (text.length < 200) return res.status(400).json({ error: 'Nội dung quá ngắn để sinh câu hỏi (tối thiểu ~200 ký tự).' });
+
+    const raw = await generateQuestions({ text, count: d.count, topic: d.topic, difficulty: d.difficulty });
+    const { valid, skipped } = shapeGenerated(raw, d);
+    if (valid.length) {
+      await prisma.$transaction(valid.map(({ options, ...data }) => prisma.question.create({
+        data: { ...data, createdById: req.user.id, options: { create: options.map((o, i) => ({ ...o, position: i })) } }
+      })));
+    }
+    await audit(req, 'QUESTIONS_GENERATED', { detail: `${valid.length} câu, chủ đề ${d.topic}${skipped ? `, bỏ ${skipped} câu lỗi` : ''}` });
+    res.json({ created: valid.length, skipped });
+  } catch (e) {
+    if (e instanceof GeneratorError || e?.status) return res.status(e.status).json({ error: e.message });
+    next(e);
+  }
 });
 
 // Nhập hàng loạt từ CSV. commit=false: chỉ kiểm tra; commit=true: nhập tất cả hoặc không nhập gì (câu hỏi vào ở trạng thái Nháp).

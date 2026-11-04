@@ -57,7 +57,9 @@ before(async () => {
   await prisma.$executeRawUnsafe('TRUNCATE "User","Question","Exam","Group","AuditLog" RESTART IDENTITY CASCADE');
   await prisma.user.create({ data: { username: 'root', fullName: 'Root', role: 'SUPER_ADMIN', passwordHash: await hashPassword(PW) } });
   server = spawn(process.execPath, ['src/index.js'], {
-    env: { ...process.env, DATABASE_URL: DB, PORT: String(PORT), JWT_SECRET: 'x'.repeat(40) }, stdio: 'pipe'
+    env: { ...process.env, DATABASE_URL: DB, PORT: String(PORT), JWT_SECRET: 'x'.repeat(40),
+      // Khoá giả + địa chỉ không tồn tại: đảm bảo test không bao giờ gọi API thật.
+      ANTHROPIC_API_KEY: 'sk-ant-fake-for-tests', ANTHROPIC_BASE_URL: 'http://127.0.0.1:9' }, stdio: 'pipe'
   });
   for (let i = 0; i < 50; i++) {
     try { if ((await fetch(BASE + '/health')).ok) return; } catch { /* chờ */ }
@@ -295,6 +297,20 @@ test('luồng đầy đủ: RBAC, câu hỏi, nhập CSV, nhóm, giao đề, là
     assert.equal(ok.body.imported, 1);
     const got = (await admin.get('/questions?q=QD2')).body.questions[0];
     assert.equal(got.document.code, '78/2014/TT-BTC');
+  });
+
+  await t.test('sinh câu hỏi bằng AI: phân quyền, kiểm tra đầu vào, lỗi dịch vụ không làm hỏng dữ liệu', async () => {
+    const body = { topic: 'Thuế', count: 3, text: 'Điều 8. Thuế suất thuế GTGT phổ thông là 10%. '.repeat(10) };
+    assert.equal((await e2.post('/questions/generate', body)).status, 403);
+    assert.equal((await admin.post('/questions/generate', { ...body, topic: '' })).status, 400);
+    assert.equal((await admin.post('/questions/generate', { ...body, count: 99 })).status, 400);
+    assert.equal((await admin.post('/questions/generate', { ...body, documentId: 'khong-co' })).status, 400);
+    assert.equal((await admin.post('/questions/generate', { ...body, text: 'ngắn' })).status, 400);
+    assert.equal((await admin.post('/questions/generate', { ...body, text: undefined, filename: 'x.docx', base64: Buffer.from('rác').toString('base64') })).status, 400);
+    const before = (await admin.get('/questions')).body.questions.length;
+    const r = await admin.post('/questions/generate', body); // API giả không kết nối được
+    assert.equal(r.status, 502);
+    assert.equal((await admin.get('/questions')).body.questions.length, before);
   });
 
   await t.test('khoá tài khoản làm mất hiệu lực phiên', async () => {

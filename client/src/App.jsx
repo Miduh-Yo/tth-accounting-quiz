@@ -142,6 +142,6 @@ export default function App() {
             : <span>HỆ THỐNG ĐÀO TẠO NỘI BỘ</span>}
     </div>
     {body}
-    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.8</span></footer>
+    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.9</span></footer>
   </main>;
 }
