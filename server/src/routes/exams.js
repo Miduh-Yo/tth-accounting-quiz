@@ -10,6 +10,13 @@ export const examsRouter = Router();
 examsRouter.use(requireAuth);
 
 const GRACE_MS = 30_000; // bù độ trễ mạng khi nộp bài
+// Người dùng được thấy đề nếu đề giao cho tất cả, hoặc cho nhóm của họ, hoặc họ đã có bài làm.
+const visibleTo = userId => ({ OR: [
+  { assignAll: true },
+  { groups: { some: { group: { members: { some: { userId } } } } } },
+  { attempts: { some: { userId } } }
+] });
+
 const deadline = (attempt, exam) => new Date(attempt.startedAt.getTime() + exam.durationMinutes * 60_000);
 
 // ---------- Quản trị: tạo / quản lý đề thi ----------
@@ -20,22 +27,29 @@ const examSchema = z.object({
   description: z.string().trim().max(1000).optional().transform(v => v || null),
   durationMinutes: z.number().int().min(1).max(240),
   passPercent: z.number().int().min(1).max(100).default(70),
-  questionIds: z.array(z.string()).min(1, 'Chọn ít nhất 1 câu hỏi').max(200)
-});
+  questionIds: z.array(z.string()).min(1, 'Chọn ít nhất 1 câu hỏi').max(200),
+  assignAll: z.boolean().default(true),
+  groupIds: z.array(z.string()).max(100).default([])
+}).refine(d => d.assignAll || d.groupIds.length > 0, { message: 'Chọn ít nhất 1 nhóm hoặc giao cho tất cả', path: ['groupIds'] });
 
 examsRouter.post('/', admin, async (req, res, next) => {
   try {
     const parsed = examSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
-    const { questionIds, ...data } = parsed.data;
+    const { questionIds, groupIds, ...data } = parsed.data;
     const ids = [...new Set(questionIds)];
+    const gids = data.assignAll ? [] : [...new Set(groupIds)];
+    if (gids.length && (await prisma.group.count({ where: { id: { in: gids } } })) !== gids.length) {
+      return res.status(400).json({ error: 'Nhóm không tồn tại' });
+    }
     const found = await prisma.question.count({ where: { id: { in: ids }, status: 'ACTIVE' } });
     if (found !== ids.length) return res.status(400).json({ error: 'Chỉ chọn được câu hỏi ở trạng thái "Đang dùng"' });
     const exam = await prisma.exam.create({
       data: { ...data, createdById: req.user.id,
-        questions: { create: ids.map((questionId, position) => ({ questionId, position })) } }
+        questions: { create: ids.map((questionId, position) => ({ questionId, position })) },
+        groups: { create: gids.map(groupId => ({ groupId })) } }
     });
-    await audit(req, 'EXAM_CREATED', { targetType: 'Exam', targetId: exam.id, detail: exam.title });
+    await audit(req, 'EXAM_CREATED', { targetType: 'Exam', targetId: exam.id, detail: `${exam.title}${gids.length ? ` → ${gids.length} nhóm` : ' → tất cả'}` });
     res.status(201).json({ exam });
   } catch (e) { next(e); }
 });
@@ -44,7 +58,7 @@ examsRouter.get('/manage', admin, async (_req, res, next) => {
   try {
     const exams = await prisma.exam.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { questions: true, attempts: true } } }
+      include: { _count: { select: { questions: true, attempts: true } }, groups: { include: { group: { select: { name: true } } } } }
     });
     res.json({ exams });
   } catch (e) { next(e); }
@@ -145,7 +159,7 @@ async function review(attemptId) {
 examsRouter.get('/', async (req, res, next) => {
   try {
     const exams = await prisma.exam.findMany({
-      where: { status: { in: ['PUBLISHED', 'CLOSED'] } },
+      where: { status: { in: ['PUBLISHED', 'CLOSED'] }, ...visibleTo(req.user.id) },
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { questions: true } }, attempts: { where: { userId: req.user.id } } }
     });
@@ -162,8 +176,8 @@ examsRouter.get('/', async (req, res, next) => {
 // Bắt đầu (hoặc tiếp tục) làm bài. Không bao giờ trả isCorrect cho người làm.
 examsRouter.post('/:id/start', async (req, res, next) => {
   try {
-    const exam = await prisma.exam.findUnique({
-      where: { id: req.params.id },
+    const exam = await prisma.exam.findFirst({
+      where: { id: req.params.id, ...visibleTo(req.user.id) },
       include: { questions: { orderBy: { position: 'asc' },
         include: { question: { include: { options: { orderBy: { position: 'asc' } } } } } } }
     });

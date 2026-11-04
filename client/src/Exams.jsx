@@ -117,14 +117,18 @@ function ExamForm({ onSaved, onCancel }) {
   const [questions, setQuestions] = useState([]);
   const [f, setF] = useState({ title: '', description: '', durationMinutes: 30, passPercent: 70 });
   const [picked, setPicked] = useState(new Set());
+  const [groups, setGroups] = useState([]);
+  const [assignAll, setAssignAll] = useState(true);
+  const [groupIds, setGroupIds] = useState(new Set());
   const [error, setError] = useState('');
+  useEffect(() => { api('/groups').then(d => setGroups(d.groups)).catch(() => {}); }, []);
   useEffect(() => { api('/questions?status=ACTIVE').then(d => setQuestions(d.questions)).catch(e => setError(e.message)); }, []);
 
   const toggle = id => { const s = new Set(picked); s.has(id) ? s.delete(id) : s.add(id); setPicked(s); };
   async function submit(event) {
     event.preventDefault(); setError('');
     try {
-      await api('/exams', { method: 'POST', body: { ...f, durationMinutes: Number(f.durationMinutes), passPercent: Number(f.passPercent), questionIds: [...picked] } });
+      await api('/exams', { method: 'POST', body: { ...f, durationMinutes: Number(f.durationMinutes), passPercent: Number(f.passPercent), questionIds: [...picked], assignAll, groupIds: [...groupIds] } });
       onSaved();
     } catch (e) { setError(e.message); }
   }
@@ -136,6 +140,14 @@ function ExamForm({ onSaved, onCancel }) {
     <div className="q-row">
       <label>Thời gian (phút)<input type="number" min="1" max="240" value={f.durationMinutes} onChange={set('durationMinutes')} /></label>
       <label>Điểm đạt (%)<input type="number" min="1" max="100" value={f.passPercent} onChange={set('passPercent')} /></label>
+    </div>
+    <div>
+      <label className="q-opt"><input type="checkbox" checked={assignAll} onChange={e => setAssignAll(e.target.checked)} /> Giao cho tất cả nhân viên</label>
+      {!assignAll && <div className="pick-list">
+        {groups.map(g => <label key={g.id} className="q-opt"><input type="checkbox" checked={groupIds.has(g.id)}
+          onChange={() => { const s = new Set(groupIds); s.has(g.id) ? s.delete(g.id) : s.add(g.id); setGroupIds(s); }} /> {g.name} ({g.members.length} người)</label>)}
+        {groups.length === 0 && <span className="muted">Chưa có nhóm nào. Hãy tạo nhóm ở mục "Quản lý nhóm".</span>}
+      </div>}
     </div>
     <p className="muted">Chọn câu hỏi ({picked.size} đã chọn) — chỉ hiện câu "Đang dùng":</p>
     <div className="pick-list">
@@ -169,10 +181,11 @@ export function ExamAdmin() {
       : <button className="submit small" onClick={() => setCreating(true)}>+ Tạo đề thi</button>}
     {error && <div className="error" role="alert">{error}</div>}
     <div className="table-wrap"><table>
-      <thead><tr><th>Đề thi</th><th>Câu</th><th>Phút</th><th>Trạng thái</th><th>Lượt làm</th><th></th></tr></thead>
+      <thead><tr><th>Đề thi</th><th>Câu</th><th>Phút</th><th>Trạng thái</th><th>Lượt làm</th><th>Giao cho</th><th></th></tr></thead>
       <tbody>
         {exams.map(e => <tr key={e.id}>
           <td>{e.title}</td><td>{e._count.questions}</td><td>{e.durationMinutes}</td><td>{STATUS_LABEL[e.status]}</td><td>{e._count.attempts}</td>
+          <td>{e.assignAll ? 'Tất cả' : e.groups.map(g => g.group.name).join(', ') || '—'}</td>
           <td className="actions">
             {e.status === 'DRAFT' && <button className="link" onClick={() => setStatus(e.id, 'PUBLISHED')}>Mở thi</button>}
             {e.status === 'PUBLISHED' && <button className="link" onClick={() => setStatus(e.id, 'CLOSED')}>Đóng</button>}
@@ -180,7 +193,7 @@ export function ExamAdmin() {
             <button className="link" onClick={() => showResults(e)}>Kết quả</button>
           </td>
         </tr>)}
-        {exams.length === 0 && <tr><td colSpan={6} className="muted">Chưa có đề thi nào.</td></tr>}
+        {exams.length === 0 && <tr><td colSpan={7} className="muted">Chưa có đề thi nào.</td></tr>}
       </tbody>
     </table></div>
     {results && <>
