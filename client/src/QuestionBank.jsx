@@ -16,7 +16,7 @@ function downloadTemplate() {
 }
 
 function ImportPanel({ onDone, onCancel }) {
-  const [csv, setCsv] = useState('');
+  const [csv, setCsv] = useState(null);
   const [name, setName] = useState('');
   const [report, setReport] = useState(null);
   const [error, setError] = useState('');
@@ -25,20 +25,26 @@ function ImportPanel({ onDone, onCancel }) {
   async function pick(e) {
     const f = e.target.files[0];
     if (!f) return;
-    setName(f.name); setReport(null); setError(''); setCsv(await f.text());
+    setName(f.name); setReport(null); setError('');
+    if (f.name.toLowerCase().endsWith('.xlsx')) {
+      if (f.size > 3 * 1024 * 1024) { setCsv(null); return setError('File Excel quá lớn (tối đa 3MB).'); }
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      setCsv({ xlsxBase64: btoa(bin) });
+    } else setCsv({ csv: await f.text() });
   }
   async function run(commit) {
     setBusy(true); setError('');
     try {
-      const r = await api('/questions/import', { method: 'POST', body: { csv, commit } });
+      const r = await api('/questions/import', { method: 'POST', body: { ...csv, commit } });
       setReport(r);
       if (commit && r.imported > 0) onDone(r.imported);
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   }
   return <div className="q-form">
-    <h3>Nhập câu hỏi từ CSV</h3>
-    <p className="muted">Lưu file Excel dạng CSV UTF-8. Cột "Đáp án đúng" ghi chữ cái (A, hoặc A;C cho nhiều đáp án). Câu nhập vào ở trạng thái Nháp. Cột "Tài liệu" ghi số hiệu hoặc tên tài liệu có trong thư viện (không bắt buộc). Tối đa 500 câu. <button type="button" className="link" onClick={downloadTemplate}>Tải file mẫu</button></p>
-    <input type="file" accept=".csv,text/csv" onChange={pick} />
+    <h3>Nhập câu hỏi từ Excel / CSV</h3>
+    <p className="muted">Dùng file mẫu Excel (.xlsx) bên dưới; cũng nhận CSV UTF-8. Cột "Đáp án đúng" ghi chữ cái (A, hoặc A;C cho nhiều đáp án). Câu nhập vào ở trạng thái Nháp. Cột "Tài liệu" ghi số hiệu hoặc tên tài liệu có trong thư viện (không bắt buộc). Tối đa 500 câu. <a className="link" href="/api/questions/import-template.xlsx">Tải mẫu Excel</a> · <button type="button" className="link" onClick={downloadTemplate}>Mẫu CSV</button></p>
+    <input type="file" accept=".xlsx,.csv,text/csv" onChange={pick} />
     {error && <div className="error" role="alert">{error}</div>}
     {report && <div>
       <p><b>{report.total}</b> dòng · <b>{report.valid}</b> hợp lệ · <b>{report.errors.length}</b> lỗi</p>
@@ -216,7 +222,7 @@ export default function QuestionBank() {
           onSaved={() => { setEditing(null); load(); }} onCancel={() => setEditing(null)} />
       : <div className="q-actions">
           <button className="submit small" onClick={() => setEditing(blank())}>+ Thêm câu hỏi</button>
-          <button className="link" onClick={() => { setImporting(!importing); setGenerating(false); setNotice(''); }}>Nhập từ CSV</button>
+          <button className="link" onClick={() => { setImporting(!importing); setGenerating(false); setNotice(''); }}>Nhập Excel/CSV</button>
           <button className="link" onClick={() => { setGenerating(!generating); setImporting(false); setNotice(''); }}>Sinh bằng AI</button>
         </div>}
     {importing && !editing && <ImportPanel onCancel={() => setImporting(false)} onDone={n => { setImporting(false); setNotice(`Đã nhập ${n} câu hỏi (trạng thái Nháp).`); load(); }} />}

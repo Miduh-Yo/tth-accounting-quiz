@@ -1,4 +1,4 @@
-# TTH Accounting Quiz – Phiên bản 0.9
+# TTH Accounting Quiz – Phiên bản 0.10
 
 Có đăng nhập thật (JWT trong cookie httpOnly), phân quyền phía máy chủ (RBAC), quản lý tài khoản, khởi tạo Super Admin an toàn, Socket.io yêu cầu đăng nhập.
 
@@ -37,14 +37,14 @@ Mọi kiểm tra quyền thực hiện ở server (`server/src/auth.js`), không
 - `helmet`, giới hạn kích thước body, kiểm tra dữ liệu bằng `zod`.
 - Không có tài khoản/mật khẩu mặc định trong mã nguồn.
 
-## Chức năng (0.9)
+## Chức năng (0.10)
 - **Ngân hàng câu hỏi** (ADMIN trở lên): chủ đề, loại (một/nhiều đáp án, Đúng/Sai), độ khó, giải thích, căn cứ. Không xoá cứng, chỉ "Lưu trữ".
 - **Đề thi**: tạo từ câu hỏi "Đang dùng", mở/đóng thi. Nhân viên làm bài có đồng hồ, mỗi người một lượt/đề; server tự tính hạn nộp (+30 giây bù mạng) và chấm điểm; đáp án đúng chỉ lộ sau khi nộp.
 - **Phòng thi trực tiếp** (Socket.io): khi tạo đề tick "Phòng thi trực tiếp". Thí sinh vào phòng chờ; quản trị mở "Vào phòng" để thấy ai online/đã nộp theo thời gian thực rồi bấm "Bắt đầu" — mọi người cùng mốc giờ, bài tự mở. Câu hỏi không đi qua socket (lấy qua REST sau khi bắt đầu, server từ chối trước giờ). Đồng hồ làm bài bù lệch giờ máy thí sinh. Chạy đúng với 1 instance server (Render free); nhiều instance cần thêm adapter Redis.
 - **Sinh câu hỏi bằng AI từ ghi chú** (ADMIN trở lên): dán văn bản hoặc tải file `.txt/.md/.docx` (tối đa ~60.000 ký tự / 4MB), chọn chủ đề, số câu (≤20), độ khó và tài liệu gắn kèm; Claude soạn câu hỏi chỉ dựa trên văn bản, kèm giải thích và căn cứ. Câu vào ở trạng thái **Nháp** để rà soát. Cần đặt biến môi trường `ANTHROPIC_API_KEY` (Render Dashboard → Environment; tuỳ chọn `ANTHROPIC_MODEL`, mặc định `claude-opus-5-5`); chưa đặt thì tính năng báo chưa cấu hình. Giới hạn 15 lượt/giờ/người. **NotebookLM** không có API cho bản cá nhân: xuất hoặc sao chép ghi chú ra văn bản rồi dán/tải lên. Văn bản nguồn được xử lý như dữ liệu, không phải chỉ dẫn; luôn rà soát đáp án trước khi dùng cho đề thi.
 - **Cảnh báo rời tab**: khi thí sinh chuyển tab/cửa sổ lúc làm bài, hệ thống báo cho thí sinh và đếm lại; quản trị thấy cột "Rời tab" ở kết quả và CSV. Chỉ để tham khảo, không tự trừ điểm (trình duyệt không chặn được mọi gian lận).
 - **Tài liệu & quy định**: thư viện văn bản (tên, số hiệu, ngày hiệu lực, tóm tắt, liên kết http/https) mọi người đều xem được; ADMIN quản lý (không xoá cứng, chỉ lưu trữ). Câu hỏi gắn được với một tài liệu + điều/khoản; sau khi nộp bài, nhân viên thấy căn cứ kèm đáp án.
-- **Nhập câu hỏi từ CSV** (tối đa 500 câu/lần, có file mẫu; cột "Tài liệu" khớp theo số hiệu hoặc tên trong thư viện): kiểm tra trước, chỉ nhập khi toàn bộ file hợp lệ; câu vào ở trạng thái Nháp. Nhận dấu phân cách `,` hoặc `;`.
+- **Nhập câu hỏi từ Excel (.xlsx) hoặc CSV** (mẫu Excel có sẵn danh sách chọn Loại/Độ khó; lỗi báo theo số dòng thật trong Excel; tối đa 500 câu/lần, có file mẫu; cột "Tài liệu" khớp theo số hiệu hoặc tên trong thư viện): kiểm tra trước, chỉ nhập khi toàn bộ file hợp lệ; câu vào ở trạng thái Nháp. Nhận dấu phân cách `,` hoặc `;`.
 - **Nhóm & giao đề**: ADMIN tạo nhóm nhân viên; khi tạo đề chọn "giao cho tất cả" hoặc một số nhóm. Server chỉ cho thấy/cho làm đề được giao (hoặc đề người đó đã có bài làm). Không xoá được nhóm đang được giao đề.
 - **Báo cáo**: xem kết quả từng đề, tải CSV (an toàn với Excel, chống CSV injection).
 - **Báo cáo tổng hợp** (ADMIN trở lên): tỷ lệ đúng theo chủ đề (yếu → mạnh), lọc theo đề và theo nhân viên; điểm trung bình và số bài đạt của từng nhân viên.
@@ -52,10 +52,17 @@ Mọi kiểm tra quyền thực hiện ở server (`server/src/auth.js`), không
 - Test tự động: `npm test -w server` (chấm điểm, CSV, nhập CSV). Test tích hợp với PostgreSQL thật (RBAC, giao đề theo nhóm, làm bài, chấm điểm, báo cáo, nhật ký) chạy khi đặt `TEST_DATABASE_URL` trỏ tới một database RỖNG dành riêng cho test (dữ liệu sẽ bị xoá) đã chạy `prisma migrate deploy`.
 - Mỗi lần thêm bảng cần chạy `npm run db:migrate` (Render tự chạy khi deploy).
 
+## Quy trình khuyến nghị: soạn bộ đề bằng Claude bên ngoài rồi nhập Excel
+Cách này không cần khoá API, bạn xem và chỉnh từng câu ngay trong cuộc trò chuyện trước khi nhập:
+1. Tải **mẫu Excel** ở mục Ngân hàng câu hỏi → *Nhập Excel/CSV*.
+2. Gửi cho Claude (claude.ai / Cowork) cùng tài liệu nguồn (PDF, Word, ghi chú NotebookLM xuất ra…) với yêu cầu mẫu: *"Dựa CHỈ trên tài liệu đính kèm, soạn N câu hỏi trắc nghiệm kế toán và điền vào file Excel mẫu này, giữ nguyên các cột. Cột Loại: Một đáp án / Nhiều đáp án / Đúng/Sai; Độ khó: Dễ / Trung bình / Khó; Đáp án đúng ghi chữ cái (A hoặc A;C); điền Giải thích và Căn cứ (điều/khoản) cho từng câu."*
+3. Rà lại nội dung, sửa trong cuộc trò chuyện hoặc trong Excel, rồi tải file lên → *Kiểm tra* → *Nhập*. Câu vào ở trạng thái Nháp, quản trị duyệt rồi chuyển "Đang dùng".
+
+Tính năng **Sinh bằng AI** (cần `ANTHROPIC_API_KEY`) phù hợp khi muốn tạo nhanh trong phần mềm; quy trình trên phù hợp khi cần chất lượng cao, tài liệu lớn/nhiều định dạng và chưa muốn trả phí API.
+
 ## Chưa làm
 - Tải file tài liệu lên (hiện chỉ lưu liên kết, vì ổ đĩa Render gói miễn phí không bền).
 - Phòng thi trực tiếp chưa có: chat, camera giám sát, nhiều instance server (Redis adapter).
-- Nhập trực tiếp file .xlsx (hiện cần lưu thành CSV UTF-8).
 
 ## Logo
 `client/src/assets/tth-logo.jpg`.

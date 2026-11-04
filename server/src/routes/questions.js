@@ -5,6 +5,7 @@ import rateLimit from 'express-rate-limit';
 import { audit } from '../audit.js';
 import { GeneratorError, MAX_GENERATE, aiConfigured, generateQuestions } from '../generator.js';
 import { extractText } from '../extractText.js';
+import { buildTemplate, parseXlsx } from '../xlsxImport.js';
 import { MAX_IMPORT_ROWS, findDocument, parseImport, rowToQuestion } from '../importQuestions.js';
 import { requireAuth, requireRole } from '../auth.js';
 
@@ -81,6 +82,15 @@ export function shapeGenerated(raw, { topic, documentId }) {
   return { valid, skipped };
 }
 
+// File mẫu Excel (.xlsx) có danh sách chọn sẵn.
+questionsRouter.get('/import-template.xlsx', async (_req, res, next) => {
+  try {
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="mau-nhap-cau-hoi.xlsx"');
+    res.send(await buildTemplate());
+  } catch (e) { next(e); }
+});
+
 questionsRouter.post('/generate', generateLimiter, async (req, res, next) => {
   try {
     if (!aiConfigured()) return res.status(503).json({ error: 'Chưa cấu hình ANTHROPIC_API_KEY trên máy chủ nên chưa dùng được tính năng này.' });
@@ -106,12 +116,16 @@ questionsRouter.post('/generate', generateLimiter, async (req, res, next) => {
   }
 });
 
-// Nhập hàng loạt từ CSV. commit=false: chỉ kiểm tra; commit=true: nhập tất cả hoặc không nhập gì (câu hỏi vào ở trạng thái Nháp).
+// Nhập hàng loạt từ CSV hoặc Excel (.xlsx). commit=false: chỉ kiểm tra; commit=true: nhập tất cả hoặc không nhập gì (câu hỏi vào ở trạng thái Nháp).
 questionsRouter.post('/import', async (req, res, next) => {
   try {
-    const parsed = z.object({ csv: z.string().min(1).max(100_000), commit: z.boolean().default(false) }).safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ error: 'Nội dung CSV không hợp lệ hoặc quá lớn (tối đa ~100KB)' });
-    const lines = parseImport(parsed.data.csv);
+    const parsed = z.object({
+      csv: z.string().min(1).max(100_000).optional(),
+      xlsxBase64: z.string().min(1).max(4_500_000).optional(),
+      commit: z.boolean().default(false)
+    }).refine(d => Boolean(d.csv) !== Boolean(d.xlsxBase64)).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Gửi đúng một trong hai: nội dung CSV (tối đa ~100KB) hoặc file Excel (tối đa 3MB)' });
+    const lines = parsed.data.xlsxBase64 ? await parseXlsx(Buffer.from(parsed.data.xlsxBase64, 'base64')) : parseImport(parsed.data.csv);
     if (lines.length === 0) return res.status(400).json({ error: 'File không có dòng dữ liệu nào' });
     if (lines.length > MAX_IMPORT_ROWS) return res.status(400).json({ error: `Tối đa ${MAX_IMPORT_ROWS} câu mỗi lần nhập` });
 
@@ -137,7 +151,10 @@ questionsRouter.post('/import', async (req, res, next) => {
     })));
     await audit(req, 'QUESTIONS_IMPORTED', { detail: `${valid.length} câu` });
     res.json({ total: lines.length, valid: valid.length, errors: [], imported: valid.length });
-  } catch (e) { next(e); }
+  } catch (e) {
+    if (e?.status) return res.status(e.status).json({ error: e.message });
+    next(e);
+  }
 });
 
 questionsRouter.post('/', async (req, res, next) => {

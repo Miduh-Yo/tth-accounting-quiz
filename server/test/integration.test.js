@@ -313,6 +313,21 @@ test('luồng đầy đủ: RBAC, câu hỏi, nhập CSV, nhóm, giao đề, là
     assert.equal((await admin.get('/questions')).body.questions.length, before);
   });
 
+  await t.test('nhập Excel (.xlsx): file mẫu, lỗi theo dòng thật trong Excel, nhập thật', async () => {
+    const tpl = await fetch(`${BASE}/questions/import-template.xlsx`, { headers: { Cookie: admin.cookie() } });
+    assert.equal(tpl.status, 200);
+    const bytes = Buffer.from(await tpl.arrayBuffer());
+    assert.equal(bytes.subarray(0, 2).toString(), 'PK');
+    assert.equal((await fetch(`${BASE}/questions/import-template.xlsx`, { headers: { Cookie: e2.cookie() } })).status, 403);
+    const x = bytes.toString('base64');
+    const dry = await admin.post('/questions/import', { xlsxBase64: x });
+    assert.deepEqual([dry.status, dry.body.total, dry.body.valid, dry.body.errors.length, dry.body.imported], [200, 3, 3, 0, 0]);
+    const done = await admin.post('/questions/import', { xlsxBase64: x, commit: true });
+    assert.equal(done.body.imported, 3);
+    assert.equal((await admin.post('/questions/import', { xlsxBase64: Buffer.from('rác không phải zip').toString('base64') })).status, 400);
+    assert.equal((await admin.post('/questions/import', { csv: 'a', xlsxBase64: x })).status, 400); // chỉ một nguồn
+  });
+
   await t.test('khoá tài khoản làm mất hiệu lực phiên', async () => {
     const users = (await admin.get('/users')).body.users;
     assert.equal((await admin.patch(`/users/${users.find(u => u.username === 'nv1').id}`, { status: 'LOCKED' })).status, 200);
