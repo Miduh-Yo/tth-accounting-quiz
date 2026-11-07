@@ -157,6 +157,20 @@ questionsRouter.post('/import', async (req, res, next) => {
   }
 });
 
+// Duyệt hàng loạt: chuyển các câu Nháp khớp bộ lọc (chủ đề/độ khó/từ khoá) sang Đang dùng.
+questionsRouter.post('/activate-drafts', async (req, res, next) => {
+  try {
+    const { topic, difficulty, q } = req.body || {};
+    const where = { status: 'DRAFT' };
+    if (typeof topic === 'string' && topic) where.topic = topic;
+    if (['EASY', 'MEDIUM', 'HARD'].includes(difficulty)) where.difficulty = difficulty;
+    if (typeof q === 'string' && q.trim()) where.content = { contains: q.trim(), mode: 'insensitive' };
+    const r = await prisma.question.updateMany({ where, data: { status: 'ACTIVE' } });
+    await audit(req, 'QUESTIONS_ACTIVATED', { detail: `${r.count} câu${topic ? `, chủ đề ${topic}` : ''}` });
+    res.json({ activated: r.count });
+  } catch (e) { next(e); }
+});
+
 questionsRouter.post('/', async (req, res, next) => {
   try {
     const parsed = questionSchema.safeParse(req.body);

@@ -213,6 +213,15 @@ export default function QuestionBank() {
     if (!window.confirm('Lưu trữ câu hỏi này? Câu hỏi sẽ không còn được dùng cho đề thi mới.')) return;
     try { await api(`/questions/${id}`, { method: 'DELETE' }); await load(); } catch (e) { setError(e.message); }
   }
+  const drafts = questions.filter(q => q.status === 'DRAFT').length;
+  async function activateDrafts() {
+    if (!window.confirm(`Chuyển ${drafts} câu Nháp đang hiển thị (theo bộ lọc hiện tại) sang "Đang dùng"?`)) return;
+    try {
+      const { topic, difficulty, q } = filter;
+      const r = await api('/questions/activate-drafts', { method: 'POST', body: { topic, difficulty, q } });
+      setNotice(`Đã chuyển ${r.activated} câu sang "Đang dùng".`); await load();
+    } catch (e) { setError(e.message); }
+  }
   const setFil = k => e => setFilter({ ...filter, [k]: e.target.value });
 
   return <div className="card">
@@ -236,6 +245,7 @@ export default function QuestionBank() {
       <select value={filter.status} onChange={setFil('status')}><option value="">Mọi trạng thái</option>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
     </div>
     {error && <div className="error" role="alert">{error}</div>}
+    {drafts > 0 && !editing && <div className="q-actions"><button className="submit small" onClick={activateDrafts}>Duyệt {drafts} câu Nháp đang lọc → Đang dùng</button></div>}
     <div className="table-wrap">
       <table>
         <thead><tr><th>Câu hỏi</th><th>Chủ đề</th><th>Loại</th><th>Độ khó</th><th>Trạng thái</th><th></th></tr></thead>
