@@ -16,6 +16,7 @@ Có đăng nhập thật (JWT trong cookie httpOnly), phân quyền phía máy c
 4. Tạo bảng: `npm run db:migrate` (đặt tên migration, ví dụ `init`).
 5. Tạo Super Admin: `npm run seed:super-admin -w server`.
    Nếu để trống `SEED_SUPER_ADMIN_PASSWORD`, mật khẩu tạm ngẫu nhiên được in ra **một lần**. Lệnh chỉ chạy khi chưa có Super Admin.
+   Quên mật khẩu Super Admin: đặt `SEED_SUPER_ADMIN_PASSWORD` (mật khẩu tạm mới) rồi chạy `npm run reset:super-admin -w server` (thêm `SEED_SUPER_ADMIN_USERNAME` nếu có nhiều Super Admin). Trên Render gói free không có Shell: chạy lệnh này từ máy bạn với `DATABASE_URL` là External Database URL.
 6. `npm run dev`, mở `http://localhost:5173`, đăng nhập và đổi mật khẩu tạm (bắt buộc).
 
 API kiểm tra: `http://localhost:4000/api/health`.

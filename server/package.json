@@ -10,7 +10,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "test": "node --test test/*.test.js",
-    "seed:super-admin": "node scripts/seed-super-admin.js"
+    "seed:super-admin": "node scripts/seed-super-admin.js",
+    "reset:super-admin": "node scripts/reset-super-admin-password.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.4.0",
