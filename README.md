@@ -1,4 +1,4 @@
-# TTH Accounting Quiz – Phiên bản 0.10
+# TTH Accounting Quiz – Phiên bản 0.11
 
 Có đăng nhập thật (JWT trong cookie httpOnly), phân quyền phía máy chủ (RBAC), quản lý tài khoản, khởi tạo Super Admin an toàn, Socket.io yêu cầu đăng nhập.
 
@@ -37,7 +37,7 @@ Mọi kiểm tra quyền thực hiện ở server (`server/src/auth.js`), không
 - `helmet`, giới hạn kích thước body, kiểm tra dữ liệu bằng `zod`.
 - Không có tài khoản/mật khẩu mặc định trong mã nguồn.
 
-## Chức năng (0.10)
+## Chức năng (0.11) — giao diện chia tab: Bài thi · Tài liệu · Câu hỏi · Đề thi & nhóm · Báo cáo · Tài khoản · Nhật ký
 - **Ngân hàng câu hỏi** (ADMIN trở lên): chủ đề, loại (một/nhiều đáp án, Đúng/Sai), độ khó, giải thích, căn cứ. Không xoá cứng, chỉ "Lưu trữ".
 - **Đề thi**: tạo từ câu hỏi "Đang dùng", mở/đóng thi. Nhân viên làm bài có đồng hồ, mỗi người một lượt/đề; server tự tính hạn nộp (+30 giây bù mạng) và chấm điểm; đáp án đúng chỉ lộ sau khi nộp.
 - **Phòng thi trực tiếp** (Socket.io): khi tạo đề tick "Phòng thi trực tiếp". Thí sinh vào phòng chờ; quản trị mở "Vào phòng" để thấy ai online/đã nộp theo thời gian thực rồi bấm "Bắt đầu" — mọi người cùng mốc giờ, bài tự mở. Câu hỏi không đi qua socket (lấy qua REST sau khi bắt đầu, server từ chối trước giờ). Đồng hồ làm bài bù lệch giờ máy thí sinh. Chạy đúng với 1 instance server (Render free); nhiều instance cần thêm adapter Redis.

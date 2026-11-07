@@ -9,7 +9,7 @@ export default function Documents({ isAdmin }) {
   const [docs, setDocs] = useState([]);
   const [edit, setEdit] = useState(null);
   const [error, setError] = useState('');
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   const load = () => api(`/documents${isAdmin ? '?all=1' : ''}`).then(d => setDocs(d.documents)).catch(e => setError(e.message));
   useEffect(() => { if (open) load(); }, [open]);

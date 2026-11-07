@@ -96,21 +96,37 @@ function ChangePassword({ forced, onDone, onCancel }) {
 
 function Home({ user, onChangePassword }) {
   const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+  // Mỗi nhóm chức năng một tab để trang không quá dài; tab hiện tại nằm trên URL (#exams…) nên tải lại vẫn giữ.
+  const tabs = [
+    { id: 'exams', label: 'Bài thi', show: true, view: <MyExams /> },
+    { id: 'docs', label: 'Tài liệu', show: true, view: <Documents isAdmin={isAdmin} /> },
+    { id: 'questions', label: 'Câu hỏi', show: isAdmin, view: <QuestionBank /> },
+    { id: 'manage', label: 'Đề thi & nhóm', show: isAdmin, view: <><ExamAdmin /><GroupAdmin /></> },
+    { id: 'reports', label: 'Báo cáo', show: isAdmin, view: <Reports /> },
+    { id: 'users', label: 'Tài khoản', show: isAdmin, view: <UserAdmin me={user} /> },
+    { id: 'audit', label: 'Nhật ký', show: user.role === 'SUPER_ADMIN', view: <AuditLog /> }
+  ].filter(t => t.show);
+  const fromHash = () => { const h = window.location.hash.slice(1); return tabs.some(t => t.id === h) ? h : 'exams'; };
+  const [tab, setTab] = useState(fromHash);
+  useEffect(() => {
+    const onHash = () => setTab(fromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  const go = id => { window.location.hash = id; setTab(id); };
+  const current = tabs.find(t => t.id === tab) ?? tabs[0];
+
   return <section className="dash">
     <div className="card">
       <h2>Xin chào, {user.fullName}</h2>
       <p className="muted">Vai trò: <b>{ROLE_LABEL[user.role]}</b> · Tài khoản: {user.username}</p>
-      <p className="muted">Chọn đề thi bên dưới để bắt đầu; kết quả và căn cứ hiển thị sau khi nộp bài.</p>
       <button className="link" onClick={onChangePassword}><KeyRound size={14} /> Đổi mật khẩu</button>
     </div>
-    <MyExams />
-    <Documents isAdmin={isAdmin} />
-    {isAdmin && <GroupAdmin />}
-    {isAdmin && <ExamAdmin />}
-    {isAdmin && <Reports />}
-    {isAdmin && <QuestionBank />}
-    {isAdmin && <UserAdmin me={user} />}
-    {user.role === 'SUPER_ADMIN' && <AuditLog />}
+    <nav className="tabs" aria-label="Chức năng">
+      {tabs.map(t => <button key={t.id} className={t.id === current.id ? 'tab active' : 'tab'}
+        aria-current={t.id === current.id ? 'page' : undefined} onClick={() => go(t.id)}>{t.label}</button>)}
+    </nav>
+    {current.view}
   </section>;
 }
 
@@ -142,6 +158,6 @@ export default function App() {
             : <span>HỆ THỐNG ĐÀO TẠO NỘI BỘ</span>}
     </div>
     {body}
-    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.10</span></footer>
+    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.11</span></footer>
   </main>;
 }
