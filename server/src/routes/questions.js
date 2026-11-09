@@ -24,9 +24,10 @@ export const questionSchema = z.object({
   difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM'),
   status: z.enum(['DRAFT', 'ACTIVE', 'ARCHIVED']).default('DRAFT'),
   content: z.string().trim().min(1, 'Nhập nội dung câu hỏi').max(2000),
-  explanation: z.string().trim().max(2000).optional().transform(v => v || null),
-  reference: z.string().trim().max(500).optional().transform(v => v || null),
-  documentId: z.string().optional().transform(v => v || null),
+  // Câu nhập từ Excel/AI có thể có giá trị null trong CSDL; khi sửa, giao diện gửi lại null nên phải chấp nhận.
+  explanation: z.string().trim().max(2000).nullish().transform(v => v || null),
+  reference: z.string().trim().max(500).nullish().transform(v => v || null),
+  documentId: z.string().nullish().transform(v => v || null),
   options: z.array(optionSchema).min(2, 'Cần ít nhất 2 đáp án').max(8)
 }).superRefine((q, ctx) => {
   const correct = q.options.filter(o => o.isCorrect).length;
