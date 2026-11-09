@@ -4,7 +4,7 @@ import { prisma } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
 import { audit } from '../audit.js';
 import { toCsv } from '../csv.js';
-import { gradeQuestion, summarize } from '../grading.js';
+import { gradeQuestion, summarize, pickBest } from '../grading.js';
 import { GRACE_MS, deadline as deadlineAt, visibleTo } from '../access.js';
 import { announceStart, broadcastRoom, roomInfo } from '../realtime.js';
 
@@ -92,14 +92,14 @@ examsRouter.get('/:id/results.csv', admin, async (req, res, next) => {
   try {
     const exam = await prisma.exam.findUnique({ where: { id: req.params.id } });
     if (!exam) return res.status(404).json({ error: 'Không tìm thấy đề thi' });
-    const attempts = await prisma.attempt.findMany({
+    const attempts = bestPerUser(await prisma.attempt.findMany({
       where: { examId: exam.id }, orderBy: { startedAt: 'asc' },
       include: { user: { select: { username: true, fullName: true } } }
-    });
+    }));
     const fmt = d => (d ? d.toISOString() : '');
-    const rows = [['Tài khoản', 'Họ tên', 'Bắt đầu', 'Nộp bài', 'Số câu đúng', 'Tổng số câu', 'Tỷ lệ (%)', 'Kết quả', 'Nộp trễ', 'Số lần rời tab'],
+    const rows = [['Tài khoản', 'Họ tên', 'Bắt đầu', 'Nộp bài', 'Số câu đúng', 'Tổng số câu', 'Tỷ lệ (%)', 'Kết quả', 'Nộp trễ', 'Số lần rời tab', 'Số lần thi'],
       ...attempts.map(a => [a.user.username, a.user.fullName, fmt(a.startedAt), fmt(a.submittedAt), a.correct, a.total, a.percent,
-        a.submittedAt ? (a.passed ? 'Đạt' : 'Chưa đạt') : 'Đang làm', a.late ? 'Có' : '', a.focusLosses])];
+        a.submittedAt ? (a.passed ? 'Đạt' : 'Chưa đạt') : 'Đang làm', a.late ? 'Có' : '', a.focusLosses, a.attemptCount])];
     await audit(req, 'RESULTS_EXPORTED', { targetType: 'Exam', targetId: exam.id });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="ket-qua-${exam.id}.csv"`);
@@ -109,17 +109,24 @@ examsRouter.get('/:id/results.csv', admin, async (req, res, next) => {
 
 examsRouter.get('/:id/results', admin, async (req, res, next) => {
   try {
-    const attempts = await prisma.attempt.findMany({
+    const attempts = bestPerUser(await prisma.attempt.findMany({
       where: { examId: req.params.id },
       include: { user: { select: { username: true, fullName: true } } },
       orderBy: { startedAt: 'desc' }
-    });
+    }));
     res.json({ results: attempts.map(a => ({
-      id: a.id, username: a.user.username, fullName: a.user.fullName, startedAt: a.startedAt,
+      attemptCount: a.attemptCount, id: a.id, username: a.user.username, fullName: a.user.fullName, startedAt: a.startedAt,
       submittedAt: a.submittedAt, late: a.late, focusLosses: a.focusLosses, correct: a.correct, total: a.total, percent: a.percent, passed: a.passed
     })) });
   } catch (e) { next(e); }
 });
+
+// Mỗi nhân viên một dòng: lần thi cao nhất (chưa nộp lần nào thì lấy lần mới nhất), kèm số lần thi.
+function bestPerUser(attempts) {
+  const by = new Map();
+  for (const a of attempts) by.set(a.userId, [...(by.get(a.userId) ?? []), a]);
+  return [...by.values()].map(list => ({ ...(pickBest(list) ?? list[0]), attemptCount: list.length }));
+}
 
 // ---------- Nhân viên: làm bài ----------
 // Chấm bài: đúng khi tập đáp án chọn trùng khớp tập đáp án đúng.
@@ -171,15 +178,19 @@ examsRouter.get('/', async (req, res, next) => {
     const exams = await prisma.exam.findMany({
       where: { status: { in: ['PUBLISHED', 'CLOSED'] }, ...visibleTo(req.user.id) },
       orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { questions: true } }, attempts: { where: { userId: req.user.id } } }
+      include: { _count: { select: { questions: true } }, attempts: { where: { userId: req.user.id }, orderBy: { startedAt: 'desc' } } }
     });
     res.json({ exams: exams.map(e => {
-      const a = e.attempts[0];
-      const expired = a && !a.submittedAt && Date.now() > deadline(a, e).getTime() + GRACE_MS;
+      const expired = a => Date.now() > deadline(a, e).getTime() + GRACE_MS;
+      const active = e.attempts.find(a => !a.submittedAt && !expired(a));
+      const best = pickBest(e.attempts);
+      const shown = active ?? best ?? e.attempts[0];
       return { id: e.id, title: e.title, description: e.description, durationMinutes: e.durationMinutes,
         passPercent: e.passPercent, status: e.status, questionCount: e._count.questions,
-        live: e.live, liveStartedAt: e.liveStartedAt,
-        attempt: a ? { id: a.id, submitted: Boolean(a.submittedAt) || expired, percent: a.percent, passed: a.passed } : null };
+        live: e.live, liveStartedAt: e.liveStartedAt, attemptCount: e.attempts.length,
+        canRetake: e.status === 'PUBLISHED' && !e.live && !active && e.attempts.length > 0,
+        attempt: shown ? { id: (best ?? shown).id, inProgress: Boolean(active), submitted: !active,
+          percent: best?.percent ?? null, passed: best?.passed ?? null } : null };
     }) });
   } catch (e) { next(e); }
 });
@@ -194,8 +205,15 @@ examsRouter.post('/:id/start', async (req, res, next) => {
     });
     if (!exam || exam.status === 'DRAFT') return res.status(404).json({ error: 'Không tìm thấy đề thi' });
 
-    let attempt = await prisma.attempt.findUnique({ where: { examId_userId: { examId: exam.id, userId: req.user.id } } });
-    if (!attempt) {
+    const mine = await prisma.attempt.findMany({ where: { examId: exam.id, userId: req.user.id }, orderBy: { startedAt: 'desc' } });
+    let attempt = mine[0];
+    if (attempt && !attempt.submittedAt && Date.now() > deadline(attempt, exam).getTime() + GRACE_MS) {
+      await finalize(attempt, {}, true); // hết giờ mà chưa nộp: chấm 0 câu
+      attempt = { ...attempt, submittedAt: new Date(), percent: 0, correct: 0 };
+      mine[0] = attempt;
+    }
+    const retake = req.body?.retake === true && attempt?.submittedAt && !exam.live && exam.status === 'PUBLISHED';
+    if (!attempt || retake) {
       if (exam.status !== 'PUBLISHED') return res.status(400).json({ error: 'Đề thi đã đóng' });
       if (exam.live) {
         // Phòng thi trực tiếp: chỉ vào được sau khi quản trị bấm bắt đầu; mọi người cùng một mốc giờ.
@@ -209,11 +227,7 @@ examsRouter.post('/:id/start', async (req, res, next) => {
       });
     }
     const end = deadline(attempt, exam);
-    if (!attempt.submittedAt && Date.now() > end.getTime() + GRACE_MS) {
-      await finalize(attempt, {}, true); // hết giờ mà chưa nộp: chấm 0 câu
-      attempt = { ...attempt, submittedAt: new Date() };
-    }
-    if (attempt.submittedAt) return res.json({ done: true, attemptId: attempt.id });
+    if (attempt.submittedAt) return res.json({ done: true, attemptId: (pickBest(mine) ?? attempt).id });
 
     res.json({
       done: false, attemptId: attempt.id, endsAt: end, serverNow: new Date(),

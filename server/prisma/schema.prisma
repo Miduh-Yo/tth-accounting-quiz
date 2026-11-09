@@ -157,7 +157,7 @@ model Attempt {
   passed      Boolean?
   answers     AttemptAnswer[]
 
-  @@unique([examId, userId])
+  @@index([examId, userId])
 }
 
 model AttemptAnswer {

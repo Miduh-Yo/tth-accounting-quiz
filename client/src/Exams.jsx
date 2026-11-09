@@ -98,10 +98,10 @@ export function MyExams() {
   const load = () => api('/exams').then(d => setExams(d.exams)).catch(e => setError(e.message));
   useEffect(() => { load(); }, []);
 
-  async function open(e) {
+  async function open(e, retake = false) {
     setError('');
     try {
-      const s = await api(`/exams/${e.id}/start`, { method: 'POST' });
+      const s = await api(`/exams/${e.id}/start`, { method: 'POST', body: retake ? { retake: true } : {} });
       if (s.done) setView({ review: await api(`/exams/attempts/${s.attemptId}/review`) });
       else setView({ take: s });
     } catch (err) { setError(err.message); }
@@ -119,9 +119,12 @@ export function MyExams() {
       <tbody>
         {exams.map(e => <tr key={e.id}>
           <td>{e.title}{e.live && ' 🔴 Trực tiếp'}</td><td>{e.questionCount}</td><td>{e.durationMinutes} phút</td>
-          <td>{e.attempt?.submitted ? `${e.attempt.percent ?? 0}% · ${e.attempt.passed ? 'Đạt' : 'Chưa đạt'}` : e.attempt ? 'Đang làm dở' : '—'}</td>
+          <td>{e.attempt?.submitted ? `${e.attempt.percent ?? 0}% · ${e.attempt.passed ? 'Đạt' : 'Chưa đạt'}${e.attemptCount > 1 ? ` (cao nhất / ${e.attemptCount} lần)` : ''}` : e.attempt ? 'Đang làm dở' : '—'}</td>
           <td className="actions">
-            {e.attempt?.submitted ? <button className="link" onClick={() => open(e)}>Xem kết quả</button>
+            {e.attempt?.submitted ? <>
+              <button className="link" onClick={() => open(e)}>Xem kết quả</button>
+              {e.canRetake && <button className="link" onClick={() => open(e, true)}>Thi lại</button>}
+            </>
               : e.status === 'PUBLISHED' && (e.live && !e.attempt && !e.liveStartedAt
                 ? <button className="link" onClick={() => setView({ lobby: e })}>Vào phòng chờ</button>
                 : <button className="link" onClick={() => open(e)}>{e.attempt ? 'Làm tiếp' : e.live ? 'Vào thi ngay' : 'Bắt đầu'}</button>)}
@@ -143,9 +146,17 @@ function ExamForm({ onSaved, onCancel }) {
   const [live, setLive] = useState(false);
   const [groupIds, setGroupIds] = useState(new Set());
   const [error, setError] = useState('');
+  const [kw, setKw] = useState('');
+  const [topic, setTopic] = useState('');
+  const [topics, setTopics] = useState([]);
   useEffect(() => { api('/groups').then(d => setGroups(d.groups)).catch(() => {}); }, []);
-  useEffect(() => { api('/questions?status=ACTIVE').then(d => setQuestions(d.questions)).catch(e => setError(e.message)); }, []);
+  useEffect(() => { api('/questions?status=ACTIVE').then(d => { setQuestions(d.questions); setTopics([...new Set(d.questions.map(q => q.topic))].sort()); }).catch(e => setError(e.message)); }, []);
 
+  const norm = t => (t || '').toLowerCase();
+  const shown = questions.filter(q => (!topic || q.topic === topic)
+    && (!kw.trim() || kw.toLowerCase().split(/\s+/).filter(Boolean).every(w => norm(`${q.topic} ${q.content} ${q.reference || ''}`).includes(w))));
+  const allShownPicked = shown.length > 0 && shown.every(q => picked.has(q.id));
+  const toggleShown = () => { const s = new Set(picked); shown.forEach(q => allShownPicked ? s.delete(q.id) : s.add(q.id)); setPicked(s); };
   const toggle = id => { const s = new Set(picked); s.has(id) ? s.delete(id) : s.add(id); setPicked(s); };
   async function submit(event) {
     event.preventDefault(); setError('');
@@ -173,8 +184,19 @@ function ExamForm({ onSaved, onCancel }) {
       </div>}
     </div>
     <p className="muted">Chọn câu hỏi ({picked.size} đã chọn) — chỉ hiện câu "Đang dùng":</p>
+    <div className="q-row">
+      <input placeholder="Lọc theo từ khoá (tên chủ đề, nội dung...)" value={kw} onChange={e => setKw(e.target.value)} />
+      <select value={topic} onChange={e => setTopic(e.target.value)}>
+        <option value="">Tất cả chủ đề</option>
+        {topics.map(t => <option key={t} value={t}>{t}</option>)}
+      </select>
+      <button type="button" className="link" onClick={toggleShown} disabled={shown.length === 0}>
+        {allShownPicked ? 'Bỏ chọn' : 'Chọn'} tất cả {shown.length} câu đang hiện
+      </button>
+    </div>
     <div className="pick-list">
-      {questions.map(q => <label key={q.id} className="q-opt"><input type="checkbox" checked={picked.has(q.id)} onChange={() => toggle(q.id)} /> [{q.topic}] {q.content}</label>)}
+      {shown.map(q => <label key={q.id} className="q-opt"><input type="checkbox" checked={picked.has(q.id)} onChange={() => toggle(q.id)} /> [{q.topic}] {q.content}</label>)}
+      {questions.length > 0 && shown.length === 0 && <span className="muted">Không có câu hỏi khớp bộ lọc.</span>}
       {questions.length === 0 && <span className="muted">Chưa có câu hỏi "Đang dùng". Hãy đặt trạng thái câu hỏi thành Đang dùng trước.</span>}
     </div>
     {error && <div className="error" role="alert">{error}</div>}
@@ -225,15 +247,15 @@ export function ExamAdmin() {
     {results && <>
       <h3>Kết quả: {results.exam.title} <a className="link" href={`/api/exams/${results.exam.id}/results.csv`}>Tải CSV</a> <button className="link" onClick={() => setResults(null)}>Ẩn</button></h3>
       <div className="table-wrap"><table>
-        <thead><tr><th>Nhân viên</th><th>Điểm</th><th>Kết quả</th><th>Trạng thái</th><th>Rời tab</th></tr></thead>
+        <thead><tr><th>Nhân viên</th><th>Số lần thi</th><th>Điểm cao nhất</th><th>Kết quả</th><th>Trạng thái</th><th>Rời tab</th></tr></thead>
         <tbody>{results.rows.map(r => <tr key={r.id}>
-          <td>{r.fullName} ({r.username})</td>
+          <td>{r.fullName} ({r.username})</td><td>{r.attemptCount}</td>
           <td>{r.submittedAt ? `${r.correct}/${r.total} (${r.percent}%)` : '—'}</td>
           <td>{r.submittedAt ? (r.passed ? 'Đạt' : 'Chưa đạt') : '—'}</td>
           <td>{r.submittedAt ? (r.late ? 'Nộp trễ' : 'Đã nộp') : 'Đang làm'}</td>
           <td>{r.focusLosses || ''}</td>
         </tr>)}
-        {results.rows.length === 0 && <tr><td colSpan={5} className="muted">Chưa có ai làm bài.</td></tr>}</tbody>
+        {results.rows.length === 0 && <tr><td colSpan={6} className="muted">Chưa có ai làm bài.</td></tr>}</tbody>
       </table></div>
     </>}
   </div>;

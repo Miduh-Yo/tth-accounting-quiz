@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
+import { pickBest } from '../grading.js';
 
 export const reportsRouter = Router();
 reportsRouter.use(requireAuth, requireRole('ADMIN'));
@@ -38,8 +39,11 @@ reportsRouter.get('/employees', async (req, res, next) => {
       where: { submittedAt: { not: null }, ...(examId && { examId }) },
       include: { user: { select: { id: true, username: true, fullName: true } } }
     });
+    // Mỗi nhân viên chỉ tính lần thi cao nhất của từng đề.
+    const perExam = new Map();
+    for (const a of attempts) perExam.set(`${a.userId}:${a.examId}`, [...(perExam.get(`${a.userId}:${a.examId}`) ?? []), a]);
     const by = new Map();
-    for (const a of attempts) {
+    for (const a of [...perExam.values()].map(pickBest)) {
       const r = by.get(a.userId) ?? { ...a.user, attempts: 0, sum: 0, passed: 0 };
       r.attempts++; r.sum += a.percent ?? 0; r.passed += a.passed ? 1 : 0;
       by.set(a.userId, r);
