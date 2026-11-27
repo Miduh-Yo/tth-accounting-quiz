@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
+import { ArrowLeft } from 'lucide-react';
 import { api } from './api.js';
+import { Chip } from './ui.jsx';
 
 // Kết nối realtime dùng chung cookie phiên (cùng origin; khi dev đi qua proxy của Vite).
 function useRoomSocket(examId, role, handlers) {
@@ -49,8 +51,8 @@ export function LiveLobby({ exam, onStarted, onBack }) {
     <h2>Phòng chờ: {exam.title}</h2>
     {st.error ? <div className="alert alert-danger" role="alert">{st.error}</div>
       : <p className="muted">{st.connected ? 'Đã vào phòng. Vui lòng chờ quản trị viên bấm bắt đầu — bài thi sẽ tự mở.' : 'Đang kết nối…'}</p>}
-    <p>Thời gian làm bài: <b>{exam.durationMinutes} phút</b> · {exam.questionCount} câu{online != null && <> · Đang online: <b>{online}</b></>}</p>
-    <button className="btn btn-link" onClick={onBack}>← Rời phòng</button>
+    <div className="stat-row"><span>Thời gian làm bài <b>{exam.durationMinutes} phút</b></span><span>Số câu <b>{exam.questionCount}</b></span>{online != null && <span>Đang online <b>{online}</b></span>}</div>
+    <button className="btn btn-secondary" style={{ justifySelf: 'start' }} onClick={onBack}><ArrowLeft />Rời phòng</button>
   </div>;
 }
 
@@ -82,17 +84,17 @@ export function LiveMonitor({ exam, onBack }) {
     <p className="muted">{st.connected ? 'Đang kết nối realtime.' : 'Mất kết nối, đang thử lại…'}</p>
     {room && !room.started && <button className="btn btn-primary" disabled={busy || !st.connected} onClick={start}>Bắt đầu phòng thi</button>}
     {room?.started && <p><b>Đã bắt đầu.</b> {left != null && (left > 0 ? <>Còn lại: <b>{fmt(left)}</b></> : 'Đã hết giờ.')}</p>}
-    <p>Đang online: <b>{snap.online.length}</b> · Đã nộp: <b>{snap.submitted.length}</b></p>
+    <div className="stat-row"><span>Đang online <b>{snap.online.length}</b></span><span>Đã nộp <b>{snap.submitted.length}</b></span></div>
     <div className="table-wrap"><table>
       <thead><tr><th>Thí sinh</th><th>Kết nối</th><th>Bài thi</th></tr></thead>
       <tbody>
         {people.map(u => <tr key={u.id}>
-          <td>{u.fullName}</td><td>{onlineIds.has(u.id) ? '🟢 Online' : '⚪ Offline'}</td>
-          <td>{submittedIds.has(u.id) ? 'Đã nộp' : room?.started ? 'Đang làm / chưa vào' : 'Chờ bắt đầu'}</td>
+          <td>{u.fullName}</td><td><span className={onlineIds.has(u.id) ? 'status-dot on' : 'status-dot'} />{onlineIds.has(u.id) ? 'Online' : 'Offline'}</td>
+          <td>{submittedIds.has(u.id) ? <Chip tone="success">Đã nộp</Chip> : room?.started ? <Chip tone="info">Đang làm / chưa vào</Chip> : <Chip tone="neutral">Chờ bắt đầu</Chip>}</td>
         </tr>)}
-        {people.length === 0 && <tr><td colSpan={3} className="muted">Chưa có ai vào phòng.</td></tr>}
+        {people.length === 0 && <tr><td colSpan={3} className="empty">Chưa có ai vào phòng.</td></tr>}
       </tbody>
     </table></div>
-    <button className="btn btn-link" onClick={onBack}>← Quay lại</button>
+    <button className="btn btn-secondary" style={{ justifySelf: 'start' }} onClick={onBack}><ArrowLeft />Quay lại</button>
   </div>;
 }

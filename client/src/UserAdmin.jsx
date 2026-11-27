@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
+import { Chip, USER_TONE } from './ui.jsx';
 
 const ROLE_LABEL = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Quản trị viên', EMPLOYEE: 'Nhân viên' };
 const STATUS_LABEL = { ACTIVE: 'Hoạt động', LOCKED: 'Đã khoá', DISABLED: 'Vô hiệu' };
@@ -51,7 +52,6 @@ export default function UserAdmin({ me }) {
   const canManage = u => RANK[u.role] < RANK[me.role];
 
   return <div className="panel panel-body">
-    <h2>Quản lý tài khoản</h2>
     <form className="form-grid cols-3" onSubmit={create}>
       <input placeholder="Tên đăng nhập" value={form.username} onChange={set('username')} required />
       <input placeholder="Họ và tên" value={form.fullName} onChange={set('fullName')} required />
@@ -69,7 +69,7 @@ export default function UserAdmin({ me }) {
       <table>
         <thead><tr><th>Tài khoản</th><th>Họ tên</th><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead>
         <tbody>
-          {users.map(u => editId === u.id ? <tr key={u.id}>
+          {users.map(u => editId === u.id ? <tr key={u.id} className="editing">
             <td><input value={edit.username} onChange={setE('username')} placeholder="Mã tài khoản" required /></td>
             <td><input value={edit.fullName} onChange={setE('fullName')} placeholder="Họ và tên" required /></td>
             <td><input type="email" value={edit.email} onChange={setE('email')} placeholder="Email" /></td>
@@ -77,13 +77,13 @@ export default function UserAdmin({ me }) {
               <option value="EMPLOYEE">Nhân viên</option>
               {me.role === 'SUPER_ADMIN' && <option value="ADMIN">Quản trị viên</option>}
             </select></td>
-            <td>{STATUS_LABEL[u.status]}</td>
+            <td><Chip tone={USER_TONE[u.status]}>{STATUS_LABEL[u.status]}</Chip></td>
             <td className="actions">
               <button className="btn btn-link" onClick={() => saveEdit(u)} disabled={!edit.fullName.trim()}>Lưu</button>
               <button className="btn btn-link" onClick={() => setEditId(null)}>Huỷ</button>
             </td>
           </tr> : <tr key={u.id}>
-            <td>{u.username}</td><td>{u.fullName}</td><td>{u.email || '—'}</td><td>{ROLE_LABEL[u.role]}</td><td>{STATUS_LABEL[u.status]}</td>
+            <td>{u.username}</td><td>{u.fullName}</td><td>{u.email || '—'}</td><td>{ROLE_LABEL[u.role]}</td><td><Chip tone={USER_TONE[u.status]}>{STATUS_LABEL[u.status]}</Chip></td>
             <td className="actions">
               {u.id !== me.id && canManage(u) && <>
                 <button className="btn btn-link" onClick={() => startEdit(u)}>Sửa</button>

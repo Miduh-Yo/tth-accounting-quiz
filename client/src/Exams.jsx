@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { AlertTriangle, ArrowLeft, Check, Minus, Plus, X } from 'lucide-react';
 import { api } from './api.js';
+import { Chip, EXAM_TONE } from './ui.jsx';
 import { LiveLobby, LiveMonitor } from './LiveRoom.jsx';
 
 const STATUS_LABEL = { DRAFT: 'Nháp', PUBLISHED: 'Đang mở', CLOSED: 'Đã đóng' };
@@ -52,41 +54,84 @@ function TakeExam({ session, onFinish }) {
   const ss = String(Math.floor(left / 1000) % 60).padStart(2, '0');
   const answered = Object.values(answers).filter(a => a.length).length;
 
-  return <div className="panel panel-body">
-    <div className="actions-row"><h2 style={{ flex: 1 }}>{session.exam.title}</h2><b>⏱ {mm}:{ss}</b></div>
-    {focusLost > 0 && <div className="alert alert-danger" role="alert">Bạn đã rời khỏi màn hình làm bài {focusLost} lần. Việc này được ghi nhận và quản trị viên có thể xem.</div>}
-    {session.questions.map((q, i) => <div key={q.id} className="take-q">
-      <p><b>Câu {i + 1}.</b> {q.content} {q.type === 'MULTIPLE' && <em className="muted">(chọn nhiều đáp án)</em>}</p>
-      {q.options.map(o => <label key={o.id} className="check-row">
-        <input type={q.type === 'MULTIPLE' ? 'checkbox' : 'radio'} name={q.id}
-          checked={(answers[q.id] || []).includes(o.id)} onChange={() => pick(q, o.id)} /> {o.text}
-      </label>)}
-    </div>)}
-    {error && <div className="alert alert-danger" role="alert">{error}</div>}
-    <button className="btn btn-primary" disabled={busy} onClick={() => {
-      if (answered < session.questions.length && !window.confirm(`Bạn mới trả lời ${answered}/${session.questions.length} câu. Vẫn nộp bài?`)) return;
-      submit();
-    }}>Nộp bài</button>
+  const total = session.questions.length;
+  const jump = id => document.getElementById(`q-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  return <div>
+    <div className="exam-bar">
+      <h2>{session.exam.title}</h2>
+      <span className="exam-progress">Đã trả lời {answered}/{total} câu</span>
+      <span className={left < 5 * 60000 ? 'timer low' : 'timer'} role="timer" aria-label="Thời gian còn lại">{mm}:{ss}</span>
+    </div>
+    <div className="exam-layout">
+      <div className="exam-main panel panel-body">
+        {focusLost > 0 && <div className="alert alert-warning" role="alert"><AlertTriangle />Bạn đã rời khỏi màn hình làm bài {focusLost} lần. Việc này được ghi nhận và quản trị viên có thể xem.</div>}
+        {session.questions.map((q, i) => <section key={q.id} id={`q-${q.id}`} className="take-q">
+          <p className="q-text"><span className="q-no">Câu {i + 1}.</span>{q.content}</p>
+          {q.type === 'MULTIPLE' && <p className="q-hint">Chọn một hoặc nhiều đáp án.</p>}
+          <div className="option-list">
+            {q.options.map(o => {
+              const on = (answers[q.id] || []).includes(o.id);
+              return <label key={o.id} className={on ? 'check-row option selected' : 'check-row option'}>
+                <input type={q.type === 'MULTIPLE' ? 'checkbox' : 'radio'} name={q.id} checked={on} onChange={() => pick(q, o.id)} />
+                <span className="grow">{o.text}</span>
+              </label>;
+            })}
+          </div>
+        </section>)}
+        {error && <div className="alert alert-danger" role="alert">{error}</div>}
+        <div className="actions-row">
+          <button className={`btn btn-primary${busy ? ' btn-loading' : ''}`} disabled={busy} onClick={() => {
+            if (answered < total && !window.confirm(`Bạn mới trả lời ${answered}/${total} câu. Vẫn nộp bài?`)) return;
+            submit();
+          }}>Nộp bài</button>
+          <span className="muted">Bài sẽ tự nộp khi hết giờ.</span>
+        </div>
+      </div>
+      <aside className="q-nav panel" aria-label="Danh sách câu hỏi">
+        <span className="section-title">Danh sách câu</span>
+        <div className="q-nav-grid">
+          {session.questions.map((q, i) => <a key={q.id} href={`#q-${q.id}`} className={(answers[q.id] || []).length ? 'done' : ''}
+            onClick={e => { e.preventDefault(); jump(q.id); }} aria-label={`Câu ${i + 1}${(answers[q.id] || []).length ? ', đã trả lời' : ''}`}>{i + 1}</a>)}
+        </div>
+        <span className="muted">Ô đặc là câu đã trả lời.</span>
+      </aside>
+    </div>
   </div>;
 }
 
 // ---------- Kết quả chi tiết ----------
 function Review({ data, onBack }) {
   const { attempt: a, exam, items } = data;
-  return <div className="panel panel-body">
-    <h2>{exam.title}</h2>
-    <p><b>{a.correct}/{a.total} câu đúng ({a.percent}%)</b> — {a.passed ? 'ĐẠT' : 'CHƯA ĐẠT'} (yêu cầu {exam.passPercent}%){a.late && ' · nộp trễ'}</p>
-    {items.map((q, i) => <div key={q.id} className="take-q">
-      <p><b>Câu {i + 1}.</b> {q.content} {q.isCorrect ? '✅' : '❌'}</p>
-      {q.options.map(o => <div key={o.id} className="check-row" style={{ color: o.isCorrect ? '#0a7a3d' : q.selectedIds.includes(o.id) ? '#b42318' : undefined }}>
-        {o.isCorrect ? '✔' : q.selectedIds.includes(o.id) ? '✘' : '•'} {o.text}{q.selectedIds.includes(o.id) && ' (bạn chọn)'}
-      </div>)}
-      {q.explanation && <p className="muted">Giải thích: {q.explanation}</p>}
-      {(q.document || q.reference) && <p className="muted">Căn cứ: {q.document && (q.document.url
-        ? <a href={q.document.url} target="_blank" rel="noopener noreferrer">{[q.document.code, q.document.title].filter(Boolean).join(' · ')}</a>
-        : [q.document.code, q.document.title].filter(Boolean).join(' · '))}{q.document && q.reference && ' — '}{q.reference}</p>}
-    </div>)}
-    <button className="btn btn-link" onClick={onBack}>← Quay lại</button>
+  return <div className="stack">
+    <div className="panel panel-body">
+      <button className="btn btn-ghost btn-sm" style={{ justifySelf: 'start' }} onClick={onBack}><ArrowLeft />Quay lại danh sách</button>
+      <h2>{exam.title}</h2>
+      <div className="score">
+        <b>{a.percent}%</b>
+        <span className={a.passed ? 'chip chip-success' : 'chip chip-danger'}>{a.passed ? 'Đạt' : 'Chưa đạt'}</span>
+        {a.late && <span className="chip chip-warning">Nộp trễ</span>}
+        <span className="muted">{a.correct}/{a.total} câu đúng · yêu cầu {exam.passPercent}%</span>
+      </div>
+    </div>
+    <div className="panel panel-body">
+      {items.map((q, i) => <section key={q.id} className="take-q">
+        <p className="q-text"><span className="q-no">Câu {i + 1}.</span>{q.content} <span className={q.isCorrect ? 'chip chip-success' : 'chip chip-danger'}>{q.isCorrect ? 'Đúng' : 'Sai'}</span></p>
+        <div className="option-list">
+          {q.options.map(o => {
+            const picked = q.selectedIds.includes(o.id);
+            const cls = o.isCorrect ? 'correct' : picked ? 'wrong' : 'plain';
+            return <div key={o.id} className={`review-opt ${cls}`}>
+              {o.isCorrect ? <Check /> : picked ? <X /> : <Minus />}
+              <span>{o.text}{picked && <em> (bạn chọn)</em>}{o.isCorrect && !picked && <em> (đáp án đúng)</em>}</span>
+            </div>;
+          })}
+        </div>
+        {q.explanation && <p className="note"><b>Giải thích:</b> {q.explanation}</p>}
+        {(q.document || q.reference) && <p className="note"><b>Căn cứ:</b> {q.document && (q.document.url
+          ? <a href={q.document.url} target="_blank" rel="noopener noreferrer">{[q.document.code, q.document.title].filter(Boolean).join(' · ')}</a>
+          : [q.document.code, q.document.title].filter(Boolean).join(' · '))}{q.document && q.reference && ' — '}{q.reference}</p>}
+      </section>)}
+    </div>
   </div>;
 }
 
@@ -112,25 +157,24 @@ export function MyExams() {
   if (view?.take) return <TakeExam session={view.take} onFinish={r => setView({ review: r })} />;
   if (view?.review) return <Review data={view.review} onBack={back} />;
   return <div className="panel panel-body">
-    <h2>Bài thi của tôi</h2>
     {error && <div className="alert alert-danger" role="alert">{error}</div>}
     <div className="table-wrap"><table>
-      <thead><tr><th>Đề thi</th><th>Số câu</th><th>Thời gian</th><th>Kết quả</th><th></th></tr></thead>
+      <thead><tr><th>Đề thi</th><th className="num">Số câu</th><th className="num">Thời gian</th><th>Kết quả</th><th></th></tr></thead>
       <tbody>
         {exams.map(e => <tr key={e.id}>
-          <td>{e.title}{e.live && ' 🔴 Trực tiếp'}</td><td>{e.questionCount}</td><td>{e.durationMinutes} phút</td>
-          <td>{e.attempt?.submitted ? `${e.attempt.percent ?? 0}% · ${e.attempt.passed ? 'Đạt' : 'Chưa đạt'}${e.attemptCount > 1 ? ` (cao nhất / ${e.attemptCount} lần)` : ''}` : e.attempt ? 'Đang làm dở' : '—'}</td>
+          <td>{e.title}{e.live && <> <Chip tone="info">Trực tiếp</Chip></>}</td><td className="num">{e.questionCount}</td><td className="num">{e.durationMinutes} phút</td>
+          <td>{e.attempt?.submitted ? <><b className="num">{e.attempt.percent ?? 0}%</b> <Chip tone={e.attempt.passed ? 'success' : 'danger'}>{e.attempt.passed ? 'Đạt' : 'Chưa đạt'}</Chip>{e.attemptCount > 1 && <span className="sub">cao nhất trong {e.attemptCount} lần</span>}</> : e.attempt ? <Chip tone="warning">Đang làm dở</Chip> : <span className="muted">Chưa làm</span>}</td>
           <td className="actions">
             {e.attempt?.submitted ? <>
-              <button className="btn btn-link" onClick={() => open(e)}>Xem kết quả</button>
-              {e.canRetake && <button className="btn btn-link" onClick={() => open(e, true)}>Thi lại</button>}
+              <button className="btn btn-secondary btn-sm" onClick={() => open(e)}>Xem kết quả</button>
+              {e.canRetake && <button className="btn btn-secondary btn-sm" onClick={() => open(e, true)}>Thi lại</button>}
             </>
               : e.status === 'PUBLISHED' && (e.live && !e.attempt && !e.liveStartedAt
-                ? <button className="btn btn-link" onClick={() => setView({ lobby: e })}>Vào phòng chờ</button>
-                : <button className="btn btn-link" onClick={() => open(e)}>{e.attempt ? 'Làm tiếp' : e.live ? 'Vào thi ngay' : 'Bắt đầu'}</button>)}
+                ? <button className="btn btn-primary btn-sm" onClick={() => setView({ lobby: e })}>Vào phòng chờ</button>
+                : <button className="btn btn-primary btn-sm" onClick={() => open(e)}>{e.attempt ? 'Làm tiếp' : e.live ? 'Vào thi ngay' : 'Bắt đầu'}</button>)}
           </td>
         </tr>)}
-        {exams.length === 0 && <tr><td colSpan={5} className="muted">Chưa có đề thi nào.</td></tr>}
+        {exams.length === 0 && <tr><td colSpan={5} className="empty">Chưa có đề thi nào.</td></tr>}
       </tbody>
     </table></div>
   </div>;
@@ -225,13 +269,13 @@ export function ExamAdmin() {
   return <div className="panel panel-body">
     <h2>Quản lý đề thi</h2>
     {creating ? <ExamForm onSaved={() => { setCreating(false); load(); }} onCancel={() => setCreating(false)} />
-      : <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Tạo đề thi</button>}
+      : <button className="btn btn-primary" style={{ justifySelf: 'start' }} onClick={() => setCreating(true)}><Plus />Tạo đề thi</button>}
     {error && <div className="alert alert-danger" role="alert">{error}</div>}
     <div className="table-wrap"><table>
-      <thead><tr><th>Đề thi</th><th>Câu</th><th>Phút</th><th>Trạng thái</th><th>Lượt làm</th><th>Giao cho</th><th></th></tr></thead>
+      <thead><tr><th>Đề thi</th><th className="num">Câu</th><th className="num">Phút</th><th>Trạng thái</th><th className="num">Lượt làm</th><th>Giao cho</th><th></th></tr></thead>
       <tbody>
         {exams.map(e => <tr key={e.id}>
-          <td>{e.title}{e.live && ' 🔴'}</td><td>{e._count.questions}</td><td>{e.durationMinutes}</td><td>{STATUS_LABEL[e.status]}</td><td>{e._count.attempts}</td>
+          <td>{e.title}{e.live && <> <Chip tone="info">Trực tiếp</Chip></>}</td><td className="num">{e._count.questions}</td><td className="num">{e.durationMinutes}</td><td><Chip tone={EXAM_TONE[e.status]}>{STATUS_LABEL[e.status]}</Chip></td><td className="num">{e._count.attempts}</td>
           <td>{e.assignAll ? 'Tất cả' : e.groups.map(g => g.group.name).join(', ') || '—'}</td>
           <td className="actions">
             {e.status === 'DRAFT' && <button className="btn btn-link" onClick={() => setStatus(e.id, 'PUBLISHED')}>Mở thi</button>}
@@ -241,21 +285,21 @@ export function ExamAdmin() {
             <button className="btn btn-link" onClick={() => showResults(e)}>Kết quả</button>
           </td>
         </tr>)}
-        {exams.length === 0 && <tr><td colSpan={7} className="muted">Chưa có đề thi nào.</td></tr>}
+        {exams.length === 0 && <tr><td colSpan={7} className="empty">Chưa có đề thi nào.</td></tr>}
       </tbody>
     </table></div>
     {results && <>
       <h3>Kết quả: {results.exam.title} <a className="btn btn-link" href={`/api/exams/${results.exam.id}/results.csv`}>Tải CSV</a> <button className="btn btn-link" onClick={() => setResults(null)}>Ẩn</button></h3>
       <div className="table-wrap"><table>
-        <thead><tr><th>Nhân viên</th><th>Số lần thi</th><th>Điểm cao nhất</th><th>Kết quả</th><th>Trạng thái</th><th>Rời tab</th></tr></thead>
+        <thead><tr><th>Nhân viên</th><th className="num">Số lần thi</th><th>Điểm cao nhất</th><th>Kết quả</th><th>Trạng thái</th><th className="num">Rời tab</th></tr></thead>
         <tbody>{results.rows.map(r => <tr key={r.id}>
-          <td>{r.fullName} ({r.username})</td><td>{r.attemptCount}</td>
+          <td>{r.fullName} <span className="sub">{r.username}</span></td><td className="num">{r.attemptCount}</td>
           <td>{r.submittedAt ? `${r.correct}/${r.total} (${r.percent}%)` : '—'}</td>
-          <td>{r.submittedAt ? (r.passed ? 'Đạt' : 'Chưa đạt') : '—'}</td>
-          <td>{r.submittedAt ? (r.late ? 'Nộp trễ' : 'Đã nộp') : 'Đang làm'}</td>
-          <td>{r.focusLosses || ''}</td>
+          <td>{r.submittedAt ? <Chip tone={r.passed ? 'success' : 'danger'}>{r.passed ? 'Đạt' : 'Chưa đạt'}</Chip> : '—'}</td>
+          <td>{r.submittedAt ? (r.late ? <Chip tone="warning">Nộp trễ</Chip> : <Chip tone="neutral">Đã nộp</Chip>) : <Chip tone="info">Đang làm</Chip>}</td>
+          <td className="num">{r.focusLosses || ''}</td>
         </tr>)}
-        {results.rows.length === 0 && <tr><td colSpan={6} className="muted">Chưa có ai làm bài.</td></tr>}</tbody>
+        {results.rows.length === 0 && <tr><td colSpan={6} className="empty">Chưa có ai làm bài.</td></tr>}</tbody>
       </table></div>
     </>}
   </div>;

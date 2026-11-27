@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { api } from './api.js';
 
 export default function GroupAdmin() {
@@ -38,19 +39,19 @@ export default function GroupAdmin() {
         {employees.length === 0 && <span className="muted">Chưa có tài khoản nhân viên nào.</span>}
       </div>
       <div className="actions-row"><button className="btn btn-primary" type="submit">Lưu nhóm</button><button type="button" className="btn btn-link" onClick={() => setEdit(null)}>Huỷ</button></div>
-    </form> : <button className="btn btn-primary" onClick={() => setEdit({ name: '', memberIds: new Set() })}>+ Tạo nhóm</button>}
+    </form> : <button className="btn btn-primary" onClick={() => setEdit({ name: '', memberIds: new Set() })}><Plus />Tạo nhóm</button>}
     {error && <div className="alert alert-danger" role="alert">{error}</div>}
     <div className="table-wrap"><table>
-      <thead><tr><th>Nhóm</th><th>Thành viên</th><th>Đề được giao</th><th></th></tr></thead>
+      <thead><tr><th>Nhóm</th><th className="num">Thành viên</th><th className="num">Đề được giao</th><th></th></tr></thead>
       <tbody>
         {groups.map(g => <tr key={g.id}>
-          <td>{g.name}</td><td>{g.members.length}</td><td>{g.examCount}</td>
+          <td>{g.name}</td><td className="num">{g.members.length}</td><td className="num">{g.examCount}</td>
           <td className="actions">
             <button className="btn btn-link" onClick={() => setEdit({ id: g.id, name: g.name, memberIds: new Set(g.members.map(m => m.id)) })}>Sửa</button>
-            <button className="btn btn-link" onClick={() => remove(g)}>Xoá</button>
+            <button className="btn btn-link" style={{ color: 'var(--danger-fg)' }} onClick={() => remove(g)}>Xoá</button>
           </td>
         </tr>)}
-        {groups.length === 0 && <tr><td colSpan={4} className="muted">Chưa có nhóm nào.</td></tr>}
+        {groups.length === 0 && <tr><td colSpan={4} className="empty">Chưa có nhóm nào.</td></tr>}
       </tbody>
     </table></div>
   </div>;

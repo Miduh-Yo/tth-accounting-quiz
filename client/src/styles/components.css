@@ -159,3 +159,14 @@ tr.editing td { background: var(--primary-50); }
 .panel-body > h3, .panel-body h3 { font-size: var(--fs-md); font-weight: 600; margin-top: var(--sp-2); }
 .panel-body .table-wrap { border: 1px solid var(--border); border-radius: var(--radius); }
 .panel-body > p { margin: 0; }
+.panel-body:has(> .table-wrap:only-child) { padding: 0; }
+.panel-body:has(> .table-wrap:only-child) > .table-wrap { border: 0; border-radius: var(--radius-lg); }
+td.nowrap { white-space: nowrap; }
+@media (max-width: 900px) {
+  .exam-bar { top: 52px; }
+  .q-nav { display: none; }
+  .exam-bar h2 { flex-basis: 100%; }
+  .exam-progress { flex: 1; }
+}
+.panel-body > .btn, .panel-body > button.btn { justify-self: start; }
+@media (max-width: 600px) { .table-wrap table { min-width: 680px; } td:first-child { min-width: 200px; } }

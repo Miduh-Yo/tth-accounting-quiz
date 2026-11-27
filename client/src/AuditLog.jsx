@@ -10,7 +10,6 @@ export default function AuditLog() {
       .then(d => { setLogs(d.logs); setError(''); }).catch(e => setError(e.message));
   }, [action]);
   return <div className="panel panel-body">
-    <h2>Nhật ký hoạt động</h2>
     <select value={action} onChange={e => setAction(e.target.value)}>
       <option value="">Tất cả</option>
       {['LOGIN', 'LOGIN_FAILED', 'PASSWORD_CHANGED', 'USER_CREATED', 'USER_UPDATED', 'QUESTION_CREATED', 'QUESTION_UPDATED',

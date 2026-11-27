@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from './api.js';
 
 function Bar({ percent }) {
-  const color = percent >= 70 ? '#0a7a3d' : percent >= 50 ? '#b7791f' : '#b42318';
-  return <div style={{ background: '#eef2f6', borderRadius: 6, height: 10, minWidth: 80 }} role="img" aria-label={`${percent}%`}>
-    <div style={{ width: `${percent}%`, background: color, height: 10, borderRadius: 6 }} />
-  </div>;
+  const tone = percent >= 70 ? 'ok' : percent >= 50 ? 'mid' : 'bad';
+  return <div className="meter" role="img" aria-label={`${percent}%`}><span className={tone} style={{ width: `${percent}%` }} /></div>;
 }
 
 export default function Reports() {
@@ -27,7 +25,6 @@ export default function Reports() {
   }, [examId, who]);
 
   return <div className="panel panel-body">
-    <h2>Báo cáo tổng hợp</h2>
     <div className="actions-row">
       <select value={examId} onChange={e => setExamId(e.target.value)}>
         <option value="">Tất cả đề thi</option>
@@ -39,23 +36,23 @@ export default function Reports() {
     <h3>Tỷ lệ đúng theo chủ đề {who ? `— ${who.fullName}` : ''}</h3>
     <p className="muted">Sắp từ yếu đến mạnh để biết chủ đề cần đào tạo thêm. Chỉ tính các bài đã nộp.</p>
     <div className="table-wrap"><table>
-      <thead><tr><th>Chủ đề</th><th>Đúng/Tổng</th><th>Tỷ lệ</th><th></th><th>Số người</th></tr></thead>
+      <thead><tr><th>Chủ đề</th><th className="num">Đúng/Tổng</th><th className="num">Tỷ lệ</th><th></th><th className="num">Số người</th></tr></thead>
       <tbody>
         {topics.map(t => <tr key={t.topic}>
-          <td>{t.topic}</td><td>{t.correct}/{t.total}</td><td>{t.percent}%</td><td><Bar percent={t.percent} /></td><td>{t.people}</td>
+          <td>{t.topic}</td><td className="num">{t.correct}/{t.total}</td><td className="num"><b>{t.percent}%</b></td><td style={{ width: '28%' }}><Bar percent={t.percent} /></td><td className="num">{t.people}</td>
         </tr>)}
-        {topics.length === 0 && <tr><td colSpan={5} className="muted">Chưa có dữ liệu.</td></tr>}
+        {topics.length === 0 && <tr><td colSpan={5} className="empty">Chưa có dữ liệu.</td></tr>}
       </tbody>
     </table></div>
     <h3>Theo nhân viên</h3>
     <div className="table-wrap"><table>
-      <thead><tr><th>Nhân viên</th><th>Số bài</th><th>Điểm TB</th><th>Số bài đạt</th><th></th></tr></thead>
+      <thead><tr><th>Nhân viên</th><th className="num">Số bài</th><th className="num">Điểm TB</th><th className="num">Số bài đạt</th><th></th></tr></thead>
       <tbody>
         {employees.map(e => <tr key={e.id}>
-          <td>{e.fullName} ({e.username})</td><td>{e.attempts}</td><td>{e.avgPercent}%</td><td>{e.passed}/{e.attempts}</td>
+          <td>{e.fullName} <span className="sub">{e.username}</span></td><td className="num">{e.attempts}</td><td className="num">{e.avgPercent}%</td><td className="num">{e.passed}/{e.attempts}</td>
           <td className="actions"><button className="btn btn-link" onClick={() => setWho(e)}>Xem theo chủ đề</button></td>
         </tr>)}
-        {employees.length === 0 && <tr><td colSpan={5} className="muted">Chưa có bài nộp nào.</td></tr>}
+        {employees.length === 0 && <tr><td colSpan={5} className="empty">Chưa có bài nộp nào.</td></tr>}
       </tbody>
     </table></div>
   </div>;

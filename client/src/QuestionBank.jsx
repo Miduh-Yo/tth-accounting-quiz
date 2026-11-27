@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { api } from './api.js';
+import { Chip, Q_TONE } from './ui.jsx';
 
 const esc = c => (/[",\n;]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
 const TEMPLATE = '\uFEFF' + [
@@ -225,19 +227,18 @@ export default function QuestionBank() {
   const setFil = k => e => setFilter({ ...filter, [k]: e.target.value });
 
   return <div className="panel panel-body">
-    <h2>Ngân hàng câu hỏi</h2>
     {editing
       ? <QuestionForm key={editing.id || 'new'} initial={editing} topics={topics}
           onSaved={() => { setEditing(null); load(); }} onCancel={() => setEditing(null)} />
       : <div className="actions-row">
-          <button className="btn btn-primary" onClick={() => setEditing(blank())}>+ Thêm câu hỏi</button>
-          <button className="btn btn-link" onClick={() => { setImporting(!importing); setGenerating(false); setNotice(''); }}>Nhập Excel/CSV</button>
-          <button className="btn btn-link" onClick={() => { setGenerating(!generating); setImporting(false); setNotice(''); }}>Sinh bằng AI</button>
+          <button className="btn btn-primary" onClick={() => setEditing(blank())}><Plus />Thêm câu hỏi</button>
+          <button className="btn btn-secondary" onClick={() => { setImporting(!importing); setGenerating(false); setNotice(''); }}>Nhập Excel/CSV</button>
+          <button className="btn btn-secondary" onClick={() => { setGenerating(!generating); setImporting(false); setNotice(''); }}>Sinh bằng AI</button>
         </div>}
     {importing && !editing && <ImportPanel onCancel={() => setImporting(false)} onDone={n => { setImporting(false); setNotice(`Đã nhập ${n} câu hỏi (trạng thái Nháp).`); load(); }} />}
     {generating && !editing && <GeneratePanel topics={topics} onCancel={() => setGenerating(false)}
       onDone={r => { setGenerating(false); setNotice(`AI đã tạo ${r.created} câu hỏi (trạng thái Nháp)${r.skipped ? `, bỏ ${r.skipped} câu không hợp lệ` : ''}. Hãy lọc "Nháp" để rà soát.`); setFilter(f => ({ ...f, status: 'DRAFT' })); }} />}
-    {notice && <p className="muted">{notice}</p>}
+    {notice && <div className="alert alert-success" role="status">{notice}</div>}
     <div className="form-grid filter">
       <input placeholder="Tìm theo nội dung…" value={filter.q} onChange={setFil('q')} />
       <select value={filter.topic} onChange={setFil('topic')}><option value="">Mọi chủ đề</option>{topics.map(t => <option key={t}>{t}</option>)}</select>
@@ -245,20 +246,20 @@ export default function QuestionBank() {
       <select value={filter.status} onChange={setFil('status')}><option value="">Mọi trạng thái</option>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
     </div>
     {error && <div className="alert alert-danger" role="alert">{error}</div>}
-    {drafts > 0 && !editing && <div className="actions-row"><button className="btn btn-primary" onClick={activateDrafts}>Duyệt {drafts} câu Nháp đang lọc → Đang dùng</button></div>}
+    {drafts > 0 && !editing && <div className="actions-row"><button className="btn btn-secondary" onClick={activateDrafts}>Duyệt {drafts} câu Nháp đang lọc → Đang dùng</button></div>}
     <div className="table-wrap">
       <table>
         <thead><tr><th>Câu hỏi</th><th>Chủ đề</th><th>Loại</th><th>Độ khó</th><th>Trạng thái</th><th></th></tr></thead>
         <tbody>
           {questions.map(q => <tr key={q.id}>
             <td title={q.options.map(o => (o.isCorrect ? '✔ ' : '• ') + o.text).join('\n')}>{q.content}</td>
-            <td>{q.topic}</td><td>{TYPE_LABEL[q.type]}</td><td>{DIFF_LABEL[q.difficulty]}</td><td>{STATUS_LABEL[q.status]}</td>
+            <td className="nowrap">{q.topic}</td><td className="nowrap">{TYPE_LABEL[q.type]}</td><td className="nowrap">{DIFF_LABEL[q.difficulty]}</td><td><Chip tone={Q_TONE[q.status]}>{STATUS_LABEL[q.status]}</Chip></td>
             <td className="actions">
               <button className="btn btn-link" onClick={() => setEditing(q)}>Sửa</button>
               {q.status !== 'ARCHIVED' && <button className="btn btn-link" onClick={() => archive(q.id)}>Lưu trữ</button>}
             </td>
           </tr>)}
-          {questions.length === 0 && <tr><td colSpan={6} className="muted">Chưa có câu hỏi nào.</td></tr>}
+          {questions.length === 0 && <tr><td colSpan={6} className="empty">Chưa có câu hỏi nào.</td></tr>}
         </tbody>
       </table>
     </div>
