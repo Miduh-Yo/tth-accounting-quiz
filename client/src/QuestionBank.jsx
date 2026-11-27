@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import { api } from './api.js';
 import { Chip, Q_TONE, useDialog } from './ui.jsx';
 
@@ -45,16 +45,28 @@ function ImportPanel({ onDone, onCancel }) {
   }
   return <div className="form-panel">
     <h3>Nhập câu hỏi từ Excel / CSV</h3>
-    <p className="muted">Dùng file mẫu Excel (.xlsx) bên dưới; cũng nhận CSV UTF-8. Cột "Đáp án đúng" ghi chữ cái (A, hoặc A;C cho nhiều đáp án). Câu nhập vào ở trạng thái Nháp. Cột "Tài liệu" ghi số hiệu hoặc tên tài liệu có trong thư viện (không bắt buộc). Tối đa 500 câu. <a className="btn btn-link" href="/api/questions/import-template.xlsx">Tải mẫu Excel</a> · <button type="button" className="btn btn-link" onClick={downloadTemplate}>Mẫu CSV</button></p>
-    <input type="file" accept=".xlsx,.csv,text/csv" onChange={pick} />
+    <p className="section-title">1. Tải file mẫu</p>
+    <div className="actions-row">
+      <a className="btn btn-secondary btn-sm" href="/api/questions/import-template.xlsx"><Download />Mẫu Excel (.xlsx)</a>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={downloadTemplate}><Download />Mẫu CSV</button>
+    </div>
+    <ul className="hint-list">
+      <li>Cột "Đáp án đúng" ghi chữ cái: <b>A</b>, hoặc <b>A;C</b> cho nhiều đáp án.</li>
+      <li>Cột "Tài liệu" ghi số hiệu hoặc tên tài liệu có trong thư viện (không bắt buộc).</li>
+      <li>Tối đa 500 câu mỗi lần. Câu nhập vào ở trạng thái Nháp.</li>
+    </ul>
+    <p className="section-title">2. Chọn file và kiểm tra</p>
+    <label className="field">File Excel hoặc CSV (UTF-8)
+      <input type="file" accept=".xlsx,.csv,text/csv" onChange={pick} />
+    </label>
     {error && <div className="alert alert-danger" role="alert">{error}</div>}
     {report && <div>
-      <p><b>{report.total}</b> dòng · <b>{report.valid}</b> hợp lệ · <b>{report.errors.length}</b> lỗi</p>
+      <div className="stat-row"><span>Số dòng <b>{report.total}</b></span><span>Hợp lệ <b>{report.valid}</b></span><span>Lỗi <b>{report.errors.length}</b></span></div>
       {report.errors.length > 0 && <><p className="muted">Sửa các lỗi sau rồi chọn lại file (không nhập gì cho đến khi hết lỗi):</p>
-        <ul>{report.errors.slice(0, 50).map(x => <li key={x.line}>Dòng {x.line}: {x.error}</li>)}</ul></>}
+        <ul className="hint-list">{report.errors.slice(0, 50).map(x => <li key={x.line}>Dòng {x.line}: {x.error}</li>)}</ul></>}
     </div>}
     <div className="actions-row">
-      <button type="button" className="btn btn-primary" disabled={!csv || busy} onClick={() => run(false)}>Kiểm tra</button>
+      <button type="button" className="btn btn-secondary" disabled={!csv || busy} onClick={() => run(false)}>Kiểm tra</button>
       <button type="button" className="btn btn-primary" disabled={!report || report.errors.length > 0 || report.valid === 0 || busy} onClick={() => run(true)}>Nhập {report?.valid || ''} câu</button>
       <button type="button" className="btn btn-link" onClick={onCancel}>Đóng</button>
     </div>
@@ -194,17 +206,29 @@ function GeneratePanel({ topics, onDone, onCancel }) {
   const set = k => e => setF({ ...f, [k]: e.target.value });
   return <form className="form-panel" onSubmit={run}>
     <h3>Sinh câu hỏi bằng AI từ ghi chú</h3>
-    <p className="muted">Dán nội dung ghi chú/quy định (hoặc tải file .txt, .md, .docx; tối đa ~60.000 ký tự). AI chỉ dùng thông tin trong văn bản; câu hỏi vào ở trạng thái <b>Nháp</b> — bạn cần rà soát từng câu trước khi chuyển sang "Đang dùng".</p>
+    <div className="alert alert-info"><span>AI chỉ dùng thông tin trong văn bản bạn cung cấp. Câu hỏi vào ở trạng thái <b>Nháp</b>; cần rà soát từng câu trước khi chuyển sang "Đang dùng".</span></div>
+    <p className="section-title">Yêu cầu</p>
     <div className="form-grid">
-      <input list="topics-gen" placeholder="Chủ đề" value={f.topic} onChange={set('topic')} required />
+      <label className="field">Chủ đề
+        <input list="topics-gen" value={f.topic} onChange={set('topic')} required />
+      </label>
       <datalist id="topics-gen">{topics.map(t => <option key={t} value={t} />)}</datalist>
-      <label>Số câu<input type="number" min="1" max="20" value={f.count} onChange={set('count')} /></label>
-      <select value={f.difficulty} onChange={set('difficulty')}><option value="">Độ khó: tuỳ AI</option><option value="EASY">Dễ</option><option value="MEDIUM">Trung bình</option><option value="HARD">Khó</option></select>
-      <select value={f.documentId} onChange={set('documentId')}><option value="">— Không gắn tài liệu —</option>{docs.map(d => <option key={d.id} value={d.id}>{d.code ? `${d.code} · ` : ''}{d.title}</option>)}</select>
+      <label className="field">Số câu (tối đa 20)<input type="number" min="1" max="20" value={f.count} onChange={set('count')} /></label>
+      <label className="field">Độ khó
+        <select value={f.difficulty} onChange={set('difficulty')}><option value="">Tuỳ AI</option><option value="EASY">Dễ</option><option value="MEDIUM">Trung bình</option><option value="HARD">Khó</option></select>
+      </label>
+      <label className="field">Tài liệu căn cứ
+        <select value={f.documentId} onChange={set('documentId')}><option value="">— Không gắn tài liệu —</option>{docs.map(d => <option key={d.id} value={d.id}>{d.code ? `${d.code} · ` : ''}{d.title}</option>)}</select>
+      </label>
     </div>
-    <input type="file" accept=".txt,.md,.docx" onChange={pick} />
+    <p className="section-title">Văn bản nguồn <span className="muted">— tối đa khoảng 60.000 ký tự</span></p>
+    <label className="field">Tải file (.txt, .md, .docx; tối đa 4MB)
+      <input type="file" accept=".txt,.md,.docx" onChange={pick} />
+    </label>
     {file ? <p className="muted">Đã chọn file: <b>{file.filename}</b></p>
-      : <textarea rows={8} placeholder="…hoặc dán nội dung ghi chú vào đây" value={text} onChange={e => setText(e.target.value)} />}
+      : <label className="field">Hoặc dán nội dung ghi chú
+          <textarea rows={8} value={text} onChange={e => setText(e.target.value)} />
+        </label>}
     {error && <div className="alert alert-danger" role="alert">{error}</div>}
     <div className="actions-row">
       <button className="btn btn-primary" type="submit" disabled={busy || (!file && text.trim().length === 0)}>{busy ? 'Đang sinh câu hỏi… (có thể mất tới 1 phút)' : 'Sinh câu hỏi'}</button>
@@ -262,10 +286,10 @@ export default function QuestionBank() {
       onDone={r => { setGenerating(false); setNotice(`AI đã tạo ${r.created} câu hỏi (trạng thái Nháp)${r.skipped ? `, bỏ ${r.skipped} câu không hợp lệ` : ''}. Hãy lọc "Nháp" để rà soát.`); setFilter(f => ({ ...f, status: 'DRAFT' })); }} />}
     {notice && <div className="alert alert-success" role="status">{notice}</div>}
     <div className="form-grid filter">
-      <input placeholder="Tìm theo nội dung…" value={filter.q} onChange={setFil('q')} />
-      <select value={filter.topic} onChange={setFil('topic')}><option value="">Mọi chủ đề</option>{topics.map(t => <option key={t}>{t}</option>)}</select>
-      <select value={filter.difficulty} onChange={setFil('difficulty')}><option value="">Mọi độ khó</option>{Object.entries(DIFF_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-      <select value={filter.status} onChange={setFil('status')}><option value="">Mọi trạng thái</option>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+      <input aria-label="Tìm câu hỏi" placeholder="Tìm theo nội dung…" value={filter.q} onChange={setFil('q')} />
+      <select aria-label="Chủ đề" value={filter.topic} onChange={setFil('topic')}><option value="">Mọi chủ đề</option>{topics.map(t => <option key={t}>{t}</option>)}</select>
+      <select aria-label="Độ khó" value={filter.difficulty} onChange={setFil('difficulty')}><option value="">Mọi độ khó</option>{Object.entries(DIFF_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+      <select aria-label="Trạng thái" value={filter.status} onChange={setFil('status')}><option value="">Mọi trạng thái</option>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
     </div>
     {error && <div className="alert alert-danger" role="alert">{error}</div>}
     {drafts > 0 && !editing && <div className="actions-row"><button className="btn btn-secondary" onClick={activateDrafts}>Duyệt {drafts} câu Nháp đang lọc → Đang dùng</button></div>}

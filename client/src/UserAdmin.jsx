@@ -57,28 +57,41 @@ export default function UserAdmin({ me }) {
   const canManage = u => RANK[u.role] < RANK[me.role];
 
   return <div className="panel panel-body">
-    <form className="form-grid cols-3" onSubmit={create}>
-      <input placeholder="Tên đăng nhập" value={form.username} onChange={set('username')} required />
-      <input placeholder="Họ và tên" value={form.fullName} onChange={set('fullName')} required />
-      <input placeholder="Email (không bắt buộc)" type="email" value={form.email} onChange={set('email')} />
-      <select value={form.role} onChange={set('role')}>
-        <option value="EMPLOYEE">Nhân viên</option>
-        {me.role === 'SUPER_ADMIN' && <option value="ADMIN">Quản trị viên</option>}
-      </select>
-      <input placeholder="Mật khẩu tạm" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} required />
-      <button className="btn btn-primary" type="submit" disabled={busy}>Tạo tài khoản</button>
+    <form className="form-panel" onSubmit={create}>
+      <p className="section-title">Tạo tài khoản mới</p>
+      <div className="form-grid cols-3">
+        <label className="field">Tên đăng nhập
+          <input value={form.username} onChange={set('username')} autoComplete="off" required />
+        </label>
+        <label className="field">Họ và tên
+          <input value={form.fullName} onChange={set('fullName')} required />
+        </label>
+        <label className="field">Email <small>Không bắt buộc.</small>
+          <input type="email" value={form.email} onChange={set('email')} />
+        </label>
+        <label className="field">Vai trò
+          <select value={form.role} onChange={set('role')}>
+            <option value="EMPLOYEE">Nhân viên</option>
+            {me.role === 'SUPER_ADMIN' && <option value="ADMIN">Quản trị viên</option>}
+          </select>
+        </label>
+        <label className="field">Mật khẩu tạm <small>Tối thiểu 10 ký tự, có chữ hoa, chữ thường, số.</small>
+          <input type="password" autoComplete="new-password" value={form.password} onChange={set('password')} required />
+        </label>
+      </div>
+      <div className="actions-row"><button className={`btn btn-primary${busy ? ' btn-loading' : ''}`} type="submit" disabled={busy}>Tạo tài khoản</button>
+        <span className="muted">Người dùng mới phải đổi mật khẩu ở lần đăng nhập đầu tiên.</span></div>
     </form>
-    <p className="muted">Người dùng mới phải đổi mật khẩu ở lần đăng nhập đầu tiên.</p>
     {error && <div className="alert alert-danger" role="alert">{error}</div>}
     <div className="table-wrap">
       <table>
         <thead><tr><th>Tài khoản</th><th>Họ tên</th><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead>
         <tbody>
           {users.map(u => editId === u.id ? <tr key={u.id} className="editing">
-            <td><input value={edit.username} onChange={setE('username')} placeholder="Mã tài khoản" required /></td>
-            <td><input value={edit.fullName} onChange={setE('fullName')} placeholder="Họ và tên" required /></td>
-            <td><input type="email" value={edit.email} onChange={setE('email')} placeholder="Email" /></td>
-            <td><select value={edit.role} onChange={setE('role')}>
+            <td><input aria-label="Mã tài khoản" value={edit.username} onChange={setE('username')} placeholder="Mã tài khoản" required /></td>
+            <td><input aria-label="Họ và tên" value={edit.fullName} onChange={setE('fullName')} placeholder="Họ và tên" required /></td>
+            <td><input aria-label="Email" type="email" value={edit.email} onChange={setE('email')} placeholder="Email" /></td>
+            <td><select aria-label="Vai trò" value={edit.role} onChange={setE('role')}>
               <option value="EMPLOYEE">Nhân viên</option>
               {me.role === 'SUPER_ADMIN' && <option value="ADMIN">Quản trị viên</option>}
             </select></td>

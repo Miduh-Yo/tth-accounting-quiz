@@ -36,14 +36,28 @@ export default function Documents({ isAdmin }) {
       {isAdmin && (edit
         ? <form className="form-panel" onSubmit={save}>
             <h3>{edit.id ? 'Sửa tài liệu' : 'Thêm tài liệu'}</h3>
-            <input placeholder="Tên tài liệu / văn bản" value={edit.title} onChange={set('title')} required />
-            <div className="form-grid">
-              <input placeholder="Số hiệu (vd: 78/2014/TT-BTC)" value={edit.code || ''} onChange={set('code')} />
-              <input type="date" aria-label="Ngày hiệu lực" value={toDateInput(edit.effectiveDate)} onChange={set('effectiveDate')} />
-              <select value={edit.status} onChange={set('status')}><option value="ACTIVE">Đang hiệu lực</option><option value="ARCHIVED">Lưu trữ</option></select>
+            <p className="section-title">Thông tin văn bản</p>
+            <label className="field">Tên tài liệu / văn bản
+              <input value={edit.title} onChange={set('title')} required />
+            </label>
+            <div className="form-grid cols-3">
+              <label className="field">Số hiệu
+                <input placeholder="Ví dụ: 78/2014/TT-BTC" value={edit.code || ''} onChange={set('code')} />
+              </label>
+              <label className="field">Ngày hiệu lực
+                <input type="date" value={toDateInput(edit.effectiveDate)} onChange={set('effectiveDate')} />
+              </label>
+              <label className="field">Tình trạng
+                <select value={edit.status} onChange={set('status')}><option value="ACTIVE">Đang hiệu lực</option><option value="ARCHIVED">Lưu trữ</option></select>
+              </label>
             </div>
-            <input placeholder="Liên kết (https://…) — không bắt buộc" value={edit.url || ''} onChange={set('url')} />
-            <textarea rows={3} placeholder="Tóm tắt nội dung chính" value={edit.summary || ''} onChange={set('summary')} />
+            <label className="field">Liên kết <small>Không bắt buộc, dạng https://…</small>
+              <input value={edit.url || ''} onChange={set('url')} />
+            </label>
+            <p className="section-title">Nội dung</p>
+            <label className="field">Tóm tắt nội dung chính
+              <textarea rows={3} value={edit.summary || ''} onChange={set('summary')} />
+            </label>
             <div className="actions-row"><button className="btn btn-primary" type="submit">Lưu</button><button type="button" className="btn btn-link" onClick={() => setEdit(null)}>Huỷ</button></div>
           </form>
         : <button className="btn btn-primary" onClick={() => setEdit(blank())}><Plus />Thêm tài liệu</button>)}

@@ -34,8 +34,11 @@ export default function GroupAdmin() {
     <h2>Quản lý nhóm</h2>
     {edit ? <form className="form-panel" onSubmit={save}>
       <h3>{edit.id ? 'Sửa nhóm' : 'Tạo nhóm'}</h3>
-      <input placeholder="Tên nhóm (vd: Kế toán thuế)" value={edit.name} onChange={e => setEdit({ ...edit, name: e.target.value })} required />
-      <p className="muted">Thành viên ({edit.memberIds.size} đã chọn):</p>
+      <p className="section-title">Thông tin nhóm</p>
+      <label className="field">Tên nhóm
+        <input placeholder="Ví dụ: Kế toán thuế" value={edit.name} onChange={e => setEdit({ ...edit, name: e.target.value })} required />
+      </label>
+      <p className="section-title">Thành viên <span className="muted">— đã chọn {edit.memberIds.size}</span></p>
       <div className="pick-list">
         {employees.map(u => <label key={u.id} className="check-row"><input type="checkbox" checked={edit.memberIds.has(u.id)} onChange={() => toggle(u.id)} /> {u.fullName} ({u.username})</label>)}
         {employees.length === 0 && <span className="muted">Chưa có tài khoản nhân viên nào.</span>}
