@@ -154,6 +154,7 @@ export function MyExams() {
     } catch (err) { setError(err.message); }
   }
   const back = () => { setView(null); load(); };
+  useEffect(() => { window.scrollTo(0, 0); }, [view]);
 
   if (view?.lobby) return <LiveLobby exam={view.lobby} onBack={back} onStarted={() => open(view.lobby)} />;
   if (view?.take) return <TakeExam session={view.take} onFinish={r => setView({ review: r })} />;

@@ -12,10 +12,10 @@ import Documents from './Documents.jsx';
 
 const ROLE_LABEL = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Quản trị viên', EMPLOYEE: 'Nhân viên' };
 
-function PasswordInput({ value, onChange, autoComplete }) {
+function PasswordInput({ id, value, onChange, autoComplete }) {
   const [show, setShow] = useState(false);
   return <div className="password-wrap">
-    <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
+    <input id={id} type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
       autoComplete={autoComplete} required />
     <button type="button" className="eye" onClick={() => setShow(!show)} aria-label="Hiện hoặc ẩn mật khẩu">
       {show ? <EyeOff /> : <Eye />}
@@ -46,9 +46,9 @@ function Login({ onLogin }) {
       <label className="field">Tên đăng nhập
         <input value={account} onChange={e => setAccount(e.target.value)} autoComplete="username" autoFocus required />
       </label>
-      <label className="field">Mật khẩu
-        <PasswordInput value={password} onChange={setPassword} autoComplete="current-password" />
-      </label>
+      <div className="field"><label htmlFor="pw-login">Mật khẩu</label>
+        <PasswordInput id="pw-login" value={password} onChange={setPassword} autoComplete="current-password" />
+      </div>
       {error && <div className="alert alert-danger" role="alert"><AlertCircle />{error}</div>}
     </div>
     <button className={`btn btn-primary btn-block${busy ? ' btn-loading' : ''}`} type="submit" disabled={busy}>{busy ? 'Đang xử lý' : 'Đăng nhập'}</button>
@@ -76,12 +76,12 @@ function ChangePassword({ forced, onDone, onCancel }) {
     <h1>Đổi mật khẩu</h1>
     <p className="lead">{forced ? 'Bạn cần đổi mật khẩu tạm trước khi tiếp tục.' : 'Nhập mật khẩu hiện tại và mật khẩu mới.'} Tối thiểu 10 ký tự, gồm chữ hoa, chữ thường và số.</p>
     <div style={{ display: 'grid', gap: 16 }}>
-      <label className="field">Mật khẩu hiện tại
-        <PasswordInput value={cur} onChange={setCur} autoComplete="current-password" />
-      </label>
-      <label className="field">Mật khẩu mới
-        <PasswordInput value={next} onChange={setNext} autoComplete="new-password" />
-      </label>
+      <div className="field"><label htmlFor="pw-current">Mật khẩu hiện tại</label>
+        <PasswordInput id="pw-current" value={cur} onChange={setCur} autoComplete="current-password" />
+      </div>
+      <div className="field"><label htmlFor="pw-new">Mật khẩu mới</label>
+        <PasswordInput id="pw-new" value={next} onChange={setNext} autoComplete="new-password" />
+      </div>
       {error && <div className="alert alert-danger" role="alert"><AlertCircle />{error}</div>}
     </div>
     <button className={`btn btn-primary btn-block${busy ? ' btn-loading' : ''}`} type="submit" disabled={busy}>{busy ? 'Đang xử lý' : 'Cập nhật mật khẩu'}</button>
