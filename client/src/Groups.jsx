@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { api } from './api.js';
+import { useDialog } from './ui.jsx';
 
 export default function GroupAdmin() {
   const [groups, setGroups] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [edit, setEdit] = useState(null); // { id?, name, memberIds:Set }
+  const { confirm, toast } = useDialog();
   const [error, setError] = useState('');
 
   const load = () => Promise.all([api('/groups'), api('/users')])
@@ -18,13 +20,13 @@ export default function GroupAdmin() {
     const body = { name: edit.name, memberIds: [...edit.memberIds] };
     try {
       await api(edit.id ? `/groups/${edit.id}` : '/groups', { method: edit.id ? 'PUT' : 'POST', body });
-      setEdit(null); await load();
+      setEdit(null); await load(); toast('Đã lưu nhóm.');
     } catch (e) { setError(e.message); }
   }
   async function remove(g) {
-    if (!window.confirm(`Xoá nhóm "${g.name}"?`)) return;
+    if (!await confirm({ title: 'Xoá nhóm', message: `Xoá nhóm "${g.name}"? Thao tác này không thể hoàn tác.`, confirmLabel: 'Xoá nhóm', danger: true })) return;
     setError('');
-    try { await api(`/groups/${g.id}`, { method: 'DELETE' }); await load(); } catch (e) { setError(e.message); }
+    try { await api(`/groups/${g.id}`, { method: 'DELETE' }); await load(); toast('Đã xoá nhóm.'); } catch (e) { setError(e.message); }
   }
   const toggle = id => { const s = new Set(edit.memberIds); s.has(id) ? s.delete(id) : s.add(id); setEdit({ ...edit, memberIds: s }); };
 

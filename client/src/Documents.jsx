@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { api } from './api.js';
-import { Chip } from './ui.jsx';
+import { Chip, useDialog } from './ui.jsx';
 
 const blank = () => ({ title: '', code: '', url: '', summary: '', effectiveDate: '', status: 'ACTIVE' });
 const toDateInput = d => (d ? String(d).slice(0, 10) : '');
@@ -10,6 +10,7 @@ const fmtDate = d => (d ? new Date(d).toLocaleDateString('vi-VN') : '');
 export default function Documents({ isAdmin }) {
   const [docs, setDocs] = useState([]);
   const [edit, setEdit] = useState(null);
+  const { confirm, toast } = useDialog();
   const [error, setError] = useState('');
   const open = true;
 
@@ -21,12 +22,12 @@ export default function Documents({ isAdmin }) {
     const { id, _count, createdAt, updatedAt, createdById, ...body } = edit;
     try {
       await api(id ? `/documents/${id}` : '/documents', { method: id ? 'PUT' : 'POST', body });
-      setEdit(null); await load();
+      setEdit(null); await load(); toast('Đã lưu tài liệu.');
     } catch (e) { setError(e.message); }
   }
   async function archive(d) {
-    if (!window.confirm(`Lưu trữ tài liệu "${d.title}"?`)) return;
-    try { await api(`/documents/${d.id}`, { method: 'DELETE' }); await load(); } catch (e) { setError(e.message); }
+    if (!await confirm({ title: 'Lưu trữ tài liệu', message: `Lưu trữ "${d.title}"? Tài liệu sẽ không còn hiển thị cho nhân viên.`, confirmLabel: 'Lưu trữ', danger: true })) return;
+    try { await api(`/documents/${d.id}`, { method: 'DELETE' }); await load(); toast('Đã lưu trữ tài liệu.'); } catch (e) { setError(e.message); }
   }
   const set = k => e => setEdit({ ...edit, [k]: e.target.value });
 

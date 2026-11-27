@@ -21,14 +21,15 @@
 - Đăng nhập / đổi mật khẩu: một thẻ căn giữa, bỏ phần quảng cáo
 - Màn làm bài: thanh cố định (tên đề, tiến độ, đồng hồ đổi màu khi còn < 5 phút), đáp án dạng hàng chọn lớn, bảng số câu; màn kết quả có điểm lớn + đúng/sai từng câu
 - Các màn quản trị: bảng có chip trạng thái, số căn phải, trạng thái trống; bỏ emoji
+- Hộp thoại xác nhận/nhập liệu và toast riêng (`DialogProvider` trong `ui.jsx`) thay `window.confirm/prompt`; khoá tài khoản nay có xác nhận; form câu hỏi và form đề thi chia nhóm trường, có nhãn
 - Không đổi logic, API, server. Đã chụp thử 1440px và 390px (API giả), không tràn ngang; build sạch; `npm test -w server` 21/22 pass (1 test bỏ qua, cần DB)
 
 ## Đang dở
-- Chưa chạy thử với dữ liệu và server thật; chưa thay `window.confirm/prompt` bằng hộp thoại xác nhận riêng; form soạn câu hỏi chưa chia nhóm trường
+- Chưa chạy thử với dữ liệu và server thật (mới kiểm tra bằng API giả + ảnh chụp)
 
 ## Bước tiếp theo
 - Chạy thử `npm run dev` với PostgreSQL thật, duyệt giao diện trên máy; sửa chi tiết rồi mới gộp dev vào main
-- Hộp thoại xác nhận cho hành động nguy hiểm, toast thông báo, chia nhóm trường trong form câu hỏi/đề thi
+- Chia nhóm trường cho form còn lại (tài liệu, nhóm, nhập Excel, sinh AI); đo tương phản/bàn phím bằng công cụ
 
 ## Chưa làm (theo README)
 - Tải file tài liệu lên (hiện chỉ lưu liên kết; ổ đĩa Render gói free không bền)

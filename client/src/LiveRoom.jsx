@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { ArrowLeft } from 'lucide-react';
 import { api } from './api.js';
-import { Chip } from './ui.jsx';
+import { Chip, useDialog } from './ui.jsx';
 
 // Kết nối realtime dùng chung cookie phiên (cùng origin; khi dev đi qua proxy của Vite).
 function useRoomSocket(examId, role, handlers) {
@@ -62,6 +62,7 @@ export function LiveMonitor({ exam, onBack }) {
   const [snap, setSnap] = useState({ online: [], submitted: [] });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const { confirm } = useDialog();
   const st = useRoomSocket(exam.id, 'monitor', {
     onJoined: r => { setRoom(r.room); setSnap({ online: r.online, submitted: r.submitted }); },
     'room:update': setSnap
@@ -69,7 +70,7 @@ export function LiveMonitor({ exam, onBack }) {
   const left = useCountdown(room?.endsAt);
 
   async function start() {
-    if (!window.confirm(`Bắt đầu phòng thi cho ${snap.online.length} người đang trong phòng chờ? Không thể hoàn tác.`)) return;
+    if (!await confirm({ title: 'Bắt đầu phòng thi', message: `Bắt đầu cho ${snap.online.length} người đang trong phòng chờ? Không thể hoàn tác.`, confirmLabel: 'Bắt đầu' })) return;
     setBusy(true); setError('');
     try { const r = await api(`/exams/${exam.id}/live/start`, { method: 'POST' }); setRoom(r.room); }
     catch (e) { setError(e.message); } finally { setBusy(false); }

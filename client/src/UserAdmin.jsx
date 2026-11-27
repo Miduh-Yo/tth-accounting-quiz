@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { api } from './api.js';
-import { Chip, USER_TONE } from './ui.jsx';
+import { Chip, USER_TONE, useDialog } from './ui.jsx';
 
 const ROLE_LABEL = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Quản trị viên', EMPLOYEE: 'Nhân viên' };
 const STATUS_LABEL = { ACTIVE: 'Hoạt động', LOCKED: 'Đã khoá', DISABLED: 'Vô hiệu' };
 const RANK = { EMPLOYEE: 1, ADMIN: 2, SUPER_ADMIN: 3 };
 
 export default function UserAdmin({ me }) {
+  const { confirm, prompt, toast } = useDialog();
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ username: '', fullName: '', email: '', role: 'EMPLOYEE', password: '' });
@@ -27,13 +28,17 @@ export default function UserAdmin({ me }) {
 
   async function patch(id, body) {
     setError('');
-    try { await api(`/users/${id}`, { method: 'PATCH', body }); await load(); }
-    catch (e) { setError(e.message); }
+    try { await api(`/users/${id}`, { method: 'PATCH', body }); await load(); return true; }
+    catch (e) { setError(e.message); return false; }
   }
 
-  function resetPassword(u) {
-    const pw = window.prompt(`Nhập mật khẩu tạm mới cho ${u.username} (≥10 ký tự, có hoa, thường, số):`);
-    if (pw) patch(u.id, { newPassword: pw });
+  async function resetPassword(u) {
+    const pw = await prompt({ title: 'Đặt lại mật khẩu', message: `Tài khoản ${u.username}. Mật khẩu tạm tối thiểu 10 ký tự, gồm chữ hoa, chữ thường và số.`, label: 'Mật khẩu tạm mới', secret: true, confirmLabel: 'Đặt lại' });
+    if (pw && await patch(u.id, { newPassword: pw })) toast(`Đã đặt lại mật khẩu cho ${u.username}.`);
+  }
+  async function setStatus(u, status) {
+    if (status === 'LOCKED' && !await confirm({ title: 'Khoá tài khoản', message: `${u.fullName} (${u.username}) sẽ bị đăng xuất và không đăng nhập được cho đến khi mở khoá.`, confirmLabel: 'Khoá', danger: true })) return;
+    if (await patch(u.id, { status })) toast(status === 'LOCKED' ? 'Đã khoá tài khoản.' : 'Đã mở khoá tài khoản.');
   }
 
   const [editId, setEditId] = useState(null);
@@ -88,8 +93,8 @@ export default function UserAdmin({ me }) {
               {u.id !== me.id && canManage(u) && <>
                 <button className="btn btn-link" onClick={() => startEdit(u)}>Sửa</button>
                 {u.status === 'ACTIVE'
-                  ? <button className="btn btn-link" onClick={() => patch(u.id, { status: 'LOCKED' })}>Khoá</button>
-                  : <button className="btn btn-link" onClick={() => patch(u.id, { status: 'ACTIVE' })}>Mở khoá</button>}
+                  ? <button className="btn btn-link" onClick={() => setStatus(u, 'LOCKED')}>Khoá</button>
+                  : <button className="btn btn-link" onClick={() => setStatus(u, 'ACTIVE')}>Mở khoá</button>}
                 <button className="btn btn-link" onClick={() => resetPassword(u)}>Đặt lại MK</button>
               </>}
             </td>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { api } from './api.js';
-import { Chip, Q_TONE } from './ui.jsx';
+import { Chip, Q_TONE, useDialog } from './ui.jsx';
 
 const esc = c => (/[",\n;]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
 const TEMPLATE = '\uFEFF' + [
@@ -109,28 +109,49 @@ function QuestionForm({ initial, topics, onSaved, onCancel }) {
 
   return <form className="form-panel" onSubmit={submit}>
     <h3>{editing ? 'Sửa câu hỏi' : 'Thêm câu hỏi'}</h3>
+    <p className="section-title">Thông tin chung</p>
     <div className="form-grid">
-      <input list="topics" placeholder="Chủ đề (vd: Thuế GTGT)" value={f.topic} onChange={set('topic')} required />
+      <label className="field">Chủ đề
+        <input list="topics" placeholder="Ví dụ: Thuế GTGT" value={f.topic} onChange={set('topic')} required />
+      </label>
       <datalist id="topics">{topics.map(t => <option key={t} value={t} />)}</datalist>
-      <select value={f.type} onChange={changeType}>{Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-      <select value={f.difficulty} onChange={set('difficulty')}>{Object.entries(DIFF_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-      <select value={f.status} onChange={set('status')}>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+      <label className="field">Loại câu hỏi
+        <select value={f.type} onChange={changeType}>{Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+      </label>
+      <label className="field">Độ khó
+        <select value={f.difficulty} onChange={set('difficulty')}>{Object.entries(DIFF_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+      </label>
+      <label className="field">Trạng thái
+        <select value={f.status} onChange={set('status')}>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+      </label>
     </div>
-    <textarea rows={3} placeholder="Nội dung câu hỏi" value={f.content} onChange={set('content')} required />
+    <label className="field">Nội dung câu hỏi
+      <textarea rows={3} value={f.content} onChange={set('content')} required />
+    </label>
+    <p className="section-title">Đáp án <span className="muted">— chọn đáp án đúng ở ô bên trái</span></p>
     <div className="q-options">
       {f.options.map((o, i) => <div key={i} className="check-row">
-        <input type={f.type === 'MULTIPLE' ? 'checkbox' : 'radio'} checked={o.isCorrect} onChange={() => toggleCorrect(i)} aria-label="Đáp án đúng" />
-        <input value={o.text} onChange={e => setOptText(i, e.target.value)} placeholder={`Đáp án ${i + 1}`} readOnly={f.type === 'TRUE_FALSE'} required />
+        <input type={f.type === 'MULTIPLE' ? 'checkbox' : 'radio'} checked={o.isCorrect} onChange={() => toggleCorrect(i)} aria-label={`Đáp án ${i + 1} là đáp án đúng`} />
+        <input value={o.text} onChange={e => setOptText(i, e.target.value)} placeholder={`Đáp án ${i + 1}`} aria-label={`Nội dung đáp án ${i + 1}`} readOnly={f.type === 'TRUE_FALSE'} required />
         {f.type !== 'TRUE_FALSE' && f.options.length > 2 && <button type="button" className="btn btn-link" onClick={() => delOpt(i)}>Xoá</button>}
       </div>)}
-      {f.type !== 'TRUE_FALSE' && f.options.length < 8 && <button type="button" className="btn btn-link" onClick={addOpt}>+ Thêm đáp án</button>}
+      {f.type !== 'TRUE_FALSE' && f.options.length < 8 && <button type="button" className="btn btn-ghost btn-sm" onClick={addOpt}><Plus />Thêm đáp án</button>}
     </div>
-    <textarea rows={2} placeholder="Giải thích đáp án (không bắt buộc)" value={f.explanation || ''} onChange={set('explanation')} />
-    <select value={f.documentId || ''} onChange={set('documentId')}>
-      <option value="">— Không gắn tài liệu —</option>
-      {docs.map(d => <option key={d.id} value={d.id}>{d.code ? `${d.code} · ` : ''}{d.title}</option>)}
-    </select>
-    <input placeholder="Điều/khoản cụ thể (không bắt buộc)" value={f.reference || ''} onChange={set('reference')} />
+    <p className="section-title">Giải thích & căn cứ</p>
+    <label className="field">Giải thích đáp án <small>Không bắt buộc. Nhân viên thấy sau khi nộp bài.</small>
+      <textarea rows={2} value={f.explanation || ''} onChange={set('explanation')} />
+    </label>
+    <div className="form-grid cols-2">
+      <label className="field">Tài liệu căn cứ
+        <select value={f.documentId || ''} onChange={set('documentId')}>
+          <option value="">— Không gắn tài liệu —</option>
+          {docs.map(d => <option key={d.id} value={d.id}>{d.code ? `${d.code} · ` : ''}{d.title}</option>)}
+        </select>
+      </label>
+      <label className="field">Điều/khoản cụ thể
+        <input placeholder="Ví dụ: Điều 8 khoản 2" value={f.reference || ''} onChange={set('reference')} />
+      </label>
+    </div>
     {error && <div className="alert alert-danger" role="alert">{error}</div>}
     <div className="actions-row">
       <button className="btn btn-primary" type="submit" disabled={busy}>{editing ? 'Lưu thay đổi' : 'Thêm câu hỏi'}</button>
@@ -193,6 +214,7 @@ function GeneratePanel({ topics, onDone, onCancel }) {
 }
 
 export default function QuestionBank() {
+  const { confirm } = useDialog();
   const [questions, setQuestions] = useState([]);
   const [topics, setTopics] = useState([]);
   const [filter, setFilter] = useState({ topic: '', status: '', difficulty: '', q: '' });
@@ -212,12 +234,12 @@ export default function QuestionBank() {
   useEffect(() => { load(); }, [filter]);
 
   async function archive(id) {
-    if (!window.confirm('Lưu trữ câu hỏi này? Câu hỏi sẽ không còn được dùng cho đề thi mới.')) return;
+    if (!await confirm({ title: 'Lưu trữ câu hỏi', message: 'Câu hỏi sẽ không còn được dùng cho đề thi mới.', confirmLabel: 'Lưu trữ', danger: true })) return;
     try { await api(`/questions/${id}`, { method: 'DELETE' }); await load(); } catch (e) { setError(e.message); }
   }
   const drafts = questions.filter(q => q.status === 'DRAFT').length;
   async function activateDrafts() {
-    if (!window.confirm(`Chuyển ${drafts} câu Nháp đang hiển thị (theo bộ lọc hiện tại) sang "Đang dùng"?`)) return;
+    if (!await confirm({ title: 'Duyệt câu hỏi', message: `Chuyển ${drafts} câu Nháp đang hiển thị (theo bộ lọc hiện tại) sang "Đang dùng"?`, confirmLabel: 'Duyệt' })) return;
     try {
       const { topic, difficulty, q } = filter;
       const r = await api('/questions/activate-drafts', { method: 'POST', body: { topic, difficulty, q } });

@@ -170,3 +170,23 @@ td.nowrap { white-space: nowrap; }
 }
 .panel-body > .btn, .panel-body > button.btn { justify-self: start; }
 @media (max-width: 600px) { .table-wrap table { min-width: 680px; } td:first-child { min-width: 200px; } }
+
+/* ---------- Hộp thoại & toast ---------- */
+.modal-scrim { position: fixed; inset: 0; z-index: 50; background: rgba(26, 32, 39, .4); display: grid; place-items: center; padding: var(--sp-4); }
+.modal { width: min(440px, 100%); background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); padding: var(--sp-6); display: grid; gap: var(--sp-4); }
+.modal h2 { font-size: var(--fs-lg); font-weight: 600; }
+.modal-actions { justify-content: flex-end; margin-top: var(--sp-2); }
+.btn-danger-solid { background: var(--danger-solid); }
+.btn-danger-solid:hover:not(:disabled) { background: var(--danger-fg); }
+.toasts { position: fixed; right: var(--sp-4); bottom: var(--sp-4); z-index: 60; display: grid; gap: var(--sp-2); width: min(360px, calc(100vw - 32px)); }
+.toast { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); background: var(--gray-900); color: #fff; border-radius: var(--radius); box-shadow: var(--shadow-pop); font-size: var(--fs-sm); }
+.toast svg { width: 16px; height: 16px; flex-shrink: 0; color: #6ad39c; }
+.toast span { flex: 1; }
+.toast button { border: 0; background: transparent; color: var(--gray-300); cursor: pointer; display: grid; place-items: center; padding: 2px; }
+.toast button:hover { color: #fff; }
+.toast-error svg { color: #ff8f85; }
+.section-title .muted { font-weight: 400; }
+.form-panel .q-options { display: grid; gap: var(--sp-2); }
+.form-panel .q-options .check-row { padding: 0; min-height: 0; }
+.form-panel .q-options > .btn { justify-self: start; }
+.form-panel .check-row { min-height: 28px; }

@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, ArrowLeft, Check, Minus, Plus, X } from 'lucide-react';
 import { api } from './api.js';
-import { Chip, EXAM_TONE } from './ui.jsx';
+import { Chip, EXAM_TONE, useDialog } from './ui.jsx';
 import { LiveLobby, LiveMonitor } from './LiveRoom.jsx';
 
 const STATUS_LABEL = { DRAFT: 'Nháp', PUBLISHED: 'Đang mở', CLOSED: 'Đã đóng' };
 
 // ---------- Màn làm bài ----------
 function TakeExam({ session, onFinish }) {
+  const { confirm, dismiss } = useDialog();
+  useEffect(() => dismiss, []);
   const [answers, setAnswers] = useState({});
   // Bù lệch đồng hồ giữa máy thí sinh và máy chủ.
   const skew = useRef(session.serverNow ? new Date(session.serverNow) - Date.now() : 0);
@@ -80,8 +82,8 @@ function TakeExam({ session, onFinish }) {
         </section>)}
         {error && <div className="alert alert-danger" role="alert">{error}</div>}
         <div className="actions-row">
-          <button className={`btn btn-primary${busy ? ' btn-loading' : ''}`} disabled={busy} onClick={() => {
-            if (answered < total && !window.confirm(`Bạn mới trả lời ${answered}/${total} câu. Vẫn nộp bài?`)) return;
+          <button className={`btn btn-primary${busy ? ' btn-loading' : ''}`} disabled={busy} onClick={async () => {
+            if (answered < total && !await confirm({ title: 'Nộp bài', message: `Bạn mới trả lời ${answered}/${total} câu. Các câu chưa trả lời sẽ tính là sai. Vẫn nộp bài?`, confirmLabel: 'Nộp bài' })) return;
             submit();
           }}>Nộp bài</button>
           <span className="muted">Bài sẽ tự nộp khi hết giờ.</span>
@@ -212,12 +214,18 @@ function ExamForm({ onSaved, onCancel }) {
   const set = k => e => setF({ ...f, [k]: e.target.value });
   return <form className="form-panel" onSubmit={submit}>
     <h3>Tạo đề thi</h3>
-    <input placeholder="Tên đề thi" value={f.title} onChange={set('title')} required />
-    <input placeholder="Mô tả (không bắt buộc)" value={f.description} onChange={set('description')} />
-    <div className="form-grid">
-      <label>Thời gian (phút)<input type="number" min="1" max="240" value={f.durationMinutes} onChange={set('durationMinutes')} /></label>
-      <label>Điểm đạt (%)<input type="number" min="1" max="100" value={f.passPercent} onChange={set('passPercent')} /></label>
+    <p className="section-title">Thông tin đề thi</p>
+    <label className="field">Tên đề thi
+      <input value={f.title} onChange={set('title')} required />
+    </label>
+    <label className="field">Mô tả <small>Không bắt buộc.</small>
+      <input value={f.description} onChange={set('description')} />
+    </label>
+    <div className="form-grid cols-2">
+      <label className="field">Thời gian làm bài (phút)<input type="number" min="1" max="240" value={f.durationMinutes} onChange={set('durationMinutes')} /></label>
+      <label className="field">Điểm đạt (%)<input type="number" min="1" max="100" value={f.passPercent} onChange={set('passPercent')} /></label>
     </div>
+    <p className="section-title">Hình thức và đối tượng</p>
     <label className="check-row"><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)} /> Phòng thi trực tiếp (quản trị bấm bắt đầu, mọi người vào thi cùng lúc)</label>
     <div>
       <label className="check-row"><input type="checkbox" checked={assignAll} onChange={e => setAssignAll(e.target.checked)} /> Giao cho tất cả nhân viên</label>
@@ -227,10 +235,10 @@ function ExamForm({ onSaved, onCancel }) {
         {groups.length === 0 && <span className="muted">Chưa có nhóm nào. Hãy tạo nhóm ở mục "Quản lý nhóm".</span>}
       </div>}
     </div>
-    <p className="muted">Chọn câu hỏi ({picked.size} đã chọn) — chỉ hiện câu "Đang dùng":</p>
-    <div className="form-grid">
-      <input placeholder="Lọc theo từ khoá (tên chủ đề, nội dung...)" value={kw} onChange={e => setKw(e.target.value)} />
-      <select value={topic} onChange={e => setTopic(e.target.value)}>
+    <p className="section-title">Câu hỏi <span className="muted">— đã chọn {picked.size}, chỉ hiện câu "Đang dùng"</span></p>
+    <div className="form-grid cols-3">
+      <input aria-label="Lọc câu hỏi" placeholder="Lọc theo từ khoá (tên chủ đề, nội dung...)" value={kw} onChange={e => setKw(e.target.value)} />
+      <select aria-label="Chủ đề" value={topic} onChange={e => setTopic(e.target.value)}>
         <option value="">Tất cả chủ đề</option>
         {topics.map(t => <option key={t} value={t}>{t}</option>)}
       </select>
@@ -249,6 +257,7 @@ function ExamForm({ onSaved, onCancel }) {
 }
 
 export function ExamAdmin() {
+  const { toast } = useDialog();
   const [exams, setExams] = useState([]);
   const [creating, setCreating] = useState(false);
   const [results, setResults] = useState(null);
@@ -259,7 +268,7 @@ export function ExamAdmin() {
 
   async function setStatus(id, status) {
     setError('');
-    try { await api(`/exams/${id}/status`, { method: 'PATCH', body: { status } }); await load(); } catch (e) { setError(e.message); }
+    try { await api(`/exams/${id}/status`, { method: 'PATCH', body: { status } }); await load(); toast(status === 'PUBLISHED' ? 'Đã mở đề thi.' : 'Đã đóng đề thi.'); } catch (e) { setError(e.message); }
   }
   async function showResults(e) {
     try { setResults({ exam: e, rows: (await api(`/exams/${e.id}/results`)).results }); } catch (err) { setError(err.message); }
