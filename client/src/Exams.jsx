@@ -52,18 +52,18 @@ function TakeExam({ session, onFinish }) {
   const ss = String(Math.floor(left / 1000) % 60).padStart(2, '0');
   const answered = Object.values(answers).filter(a => a.length).length;
 
-  return <div className="card">
-    <div className="q-actions"><h2 style={{ flex: 1 }}>{session.exam.title}</h2><b>⏱ {mm}:{ss}</b></div>
-    {focusLost > 0 && <div className="error" role="alert">Bạn đã rời khỏi màn hình làm bài {focusLost} lần. Việc này được ghi nhận và quản trị viên có thể xem.</div>}
+  return <div className="panel panel-body">
+    <div className="actions-row"><h2 style={{ flex: 1 }}>{session.exam.title}</h2><b>⏱ {mm}:{ss}</b></div>
+    {focusLost > 0 && <div className="alert alert-danger" role="alert">Bạn đã rời khỏi màn hình làm bài {focusLost} lần. Việc này được ghi nhận và quản trị viên có thể xem.</div>}
     {session.questions.map((q, i) => <div key={q.id} className="take-q">
       <p><b>Câu {i + 1}.</b> {q.content} {q.type === 'MULTIPLE' && <em className="muted">(chọn nhiều đáp án)</em>}</p>
-      {q.options.map(o => <label key={o.id} className="q-opt">
+      {q.options.map(o => <label key={o.id} className="check-row">
         <input type={q.type === 'MULTIPLE' ? 'checkbox' : 'radio'} name={q.id}
           checked={(answers[q.id] || []).includes(o.id)} onChange={() => pick(q, o.id)} /> {o.text}
       </label>)}
     </div>)}
-    {error && <div className="error" role="alert">{error}</div>}
-    <button className="submit small" disabled={busy} onClick={() => {
+    {error && <div className="alert alert-danger" role="alert">{error}</div>}
+    <button className="btn btn-primary" disabled={busy} onClick={() => {
       if (answered < session.questions.length && !window.confirm(`Bạn mới trả lời ${answered}/${session.questions.length} câu. Vẫn nộp bài?`)) return;
       submit();
     }}>Nộp bài</button>
@@ -73,12 +73,12 @@ function TakeExam({ session, onFinish }) {
 // ---------- Kết quả chi tiết ----------
 function Review({ data, onBack }) {
   const { attempt: a, exam, items } = data;
-  return <div className="card">
+  return <div className="panel panel-body">
     <h2>{exam.title}</h2>
     <p><b>{a.correct}/{a.total} câu đúng ({a.percent}%)</b> — {a.passed ? 'ĐẠT' : 'CHƯA ĐẠT'} (yêu cầu {exam.passPercent}%){a.late && ' · nộp trễ'}</p>
     {items.map((q, i) => <div key={q.id} className="take-q">
       <p><b>Câu {i + 1}.</b> {q.content} {q.isCorrect ? '✅' : '❌'}</p>
-      {q.options.map(o => <div key={o.id} className="q-opt" style={{ color: o.isCorrect ? '#0a7a3d' : q.selectedIds.includes(o.id) ? '#b42318' : undefined }}>
+      {q.options.map(o => <div key={o.id} className="check-row" style={{ color: o.isCorrect ? '#0a7a3d' : q.selectedIds.includes(o.id) ? '#b42318' : undefined }}>
         {o.isCorrect ? '✔' : q.selectedIds.includes(o.id) ? '✘' : '•'} {o.text}{q.selectedIds.includes(o.id) && ' (bạn chọn)'}
       </div>)}
       {q.explanation && <p className="muted">Giải thích: {q.explanation}</p>}
@@ -86,7 +86,7 @@ function Review({ data, onBack }) {
         ? <a href={q.document.url} target="_blank" rel="noopener noreferrer">{[q.document.code, q.document.title].filter(Boolean).join(' · ')}</a>
         : [q.document.code, q.document.title].filter(Boolean).join(' · '))}{q.document && q.reference && ' — '}{q.reference}</p>}
     </div>)}
-    <button className="link" onClick={onBack}>← Quay lại</button>
+    <button className="btn btn-link" onClick={onBack}>← Quay lại</button>
   </div>;
 }
 
@@ -111,9 +111,9 @@ export function MyExams() {
   if (view?.lobby) return <LiveLobby exam={view.lobby} onBack={back} onStarted={() => open(view.lobby)} />;
   if (view?.take) return <TakeExam session={view.take} onFinish={r => setView({ review: r })} />;
   if (view?.review) return <Review data={view.review} onBack={back} />;
-  return <div className="card">
+  return <div className="panel panel-body">
     <h2>Bài thi của tôi</h2>
-    {error && <div className="error" role="alert">{error}</div>}
+    {error && <div className="alert alert-danger" role="alert">{error}</div>}
     <div className="table-wrap"><table>
       <thead><tr><th>Đề thi</th><th>Số câu</th><th>Thời gian</th><th>Kết quả</th><th></th></tr></thead>
       <tbody>
@@ -122,12 +122,12 @@ export function MyExams() {
           <td>{e.attempt?.submitted ? `${e.attempt.percent ?? 0}% · ${e.attempt.passed ? 'Đạt' : 'Chưa đạt'}${e.attemptCount > 1 ? ` (cao nhất / ${e.attemptCount} lần)` : ''}` : e.attempt ? 'Đang làm dở' : '—'}</td>
           <td className="actions">
             {e.attempt?.submitted ? <>
-              <button className="link" onClick={() => open(e)}>Xem kết quả</button>
-              {e.canRetake && <button className="link" onClick={() => open(e, true)}>Thi lại</button>}
+              <button className="btn btn-link" onClick={() => open(e)}>Xem kết quả</button>
+              {e.canRetake && <button className="btn btn-link" onClick={() => open(e, true)}>Thi lại</button>}
             </>
               : e.status === 'PUBLISHED' && (e.live && !e.attempt && !e.liveStartedAt
-                ? <button className="link" onClick={() => setView({ lobby: e })}>Vào phòng chờ</button>
-                : <button className="link" onClick={() => open(e)}>{e.attempt ? 'Làm tiếp' : e.live ? 'Vào thi ngay' : 'Bắt đầu'}</button>)}
+                ? <button className="btn btn-link" onClick={() => setView({ lobby: e })}>Vào phòng chờ</button>
+                : <button className="btn btn-link" onClick={() => open(e)}>{e.attempt ? 'Làm tiếp' : e.live ? 'Vào thi ngay' : 'Bắt đầu'}</button>)}
           </td>
         </tr>)}
         {exams.length === 0 && <tr><td colSpan={5} className="muted">Chưa có đề thi nào.</td></tr>}
@@ -166,41 +166,41 @@ function ExamForm({ onSaved, onCancel }) {
     } catch (e) { setError(e.message); }
   }
   const set = k => e => setF({ ...f, [k]: e.target.value });
-  return <form className="q-form" onSubmit={submit}>
+  return <form className="form-panel" onSubmit={submit}>
     <h3>Tạo đề thi</h3>
     <input placeholder="Tên đề thi" value={f.title} onChange={set('title')} required />
     <input placeholder="Mô tả (không bắt buộc)" value={f.description} onChange={set('description')} />
-    <div className="q-row">
+    <div className="form-grid">
       <label>Thời gian (phút)<input type="number" min="1" max="240" value={f.durationMinutes} onChange={set('durationMinutes')} /></label>
       <label>Điểm đạt (%)<input type="number" min="1" max="100" value={f.passPercent} onChange={set('passPercent')} /></label>
     </div>
-    <label className="q-opt"><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)} /> Phòng thi trực tiếp (quản trị bấm bắt đầu, mọi người vào thi cùng lúc)</label>
+    <label className="check-row"><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)} /> Phòng thi trực tiếp (quản trị bấm bắt đầu, mọi người vào thi cùng lúc)</label>
     <div>
-      <label className="q-opt"><input type="checkbox" checked={assignAll} onChange={e => setAssignAll(e.target.checked)} /> Giao cho tất cả nhân viên</label>
+      <label className="check-row"><input type="checkbox" checked={assignAll} onChange={e => setAssignAll(e.target.checked)} /> Giao cho tất cả nhân viên</label>
       {!assignAll && <div className="pick-list">
-        {groups.map(g => <label key={g.id} className="q-opt"><input type="checkbox" checked={groupIds.has(g.id)}
+        {groups.map(g => <label key={g.id} className="check-row"><input type="checkbox" checked={groupIds.has(g.id)}
           onChange={() => { const s = new Set(groupIds); s.has(g.id) ? s.delete(g.id) : s.add(g.id); setGroupIds(s); }} /> {g.name} ({g.members.length} người)</label>)}
         {groups.length === 0 && <span className="muted">Chưa có nhóm nào. Hãy tạo nhóm ở mục "Quản lý nhóm".</span>}
       </div>}
     </div>
     <p className="muted">Chọn câu hỏi ({picked.size} đã chọn) — chỉ hiện câu "Đang dùng":</p>
-    <div className="q-row">
+    <div className="form-grid">
       <input placeholder="Lọc theo từ khoá (tên chủ đề, nội dung...)" value={kw} onChange={e => setKw(e.target.value)} />
       <select value={topic} onChange={e => setTopic(e.target.value)}>
         <option value="">Tất cả chủ đề</option>
         {topics.map(t => <option key={t} value={t}>{t}</option>)}
       </select>
-      <button type="button" className="link" onClick={toggleShown} disabled={shown.length === 0}>
+      <button type="button" className="btn btn-link" onClick={toggleShown} disabled={shown.length === 0}>
         {allShownPicked ? 'Bỏ chọn' : 'Chọn'} tất cả {shown.length} câu đang hiện
       </button>
     </div>
     <div className="pick-list">
-      {shown.map(q => <label key={q.id} className="q-opt"><input type="checkbox" checked={picked.has(q.id)} onChange={() => toggle(q.id)} /> [{q.topic}] {q.content}</label>)}
+      {shown.map(q => <label key={q.id} className="check-row"><input type="checkbox" checked={picked.has(q.id)} onChange={() => toggle(q.id)} /> [{q.topic}] {q.content}</label>)}
       {questions.length > 0 && shown.length === 0 && <span className="muted">Không có câu hỏi khớp bộ lọc.</span>}
       {questions.length === 0 && <span className="muted">Chưa có câu hỏi "Đang dùng". Hãy đặt trạng thái câu hỏi thành Đang dùng trước.</span>}
     </div>
-    {error && <div className="error" role="alert">{error}</div>}
-    <div className="q-actions"><button className="submit small" type="submit">Tạo đề (nháp)</button><button type="button" className="link" onClick={onCancel}>Huỷ</button></div>
+    {error && <div className="alert alert-danger" role="alert">{error}</div>}
+    <div className="actions-row"><button className="btn btn-primary" type="submit">Tạo đề (nháp)</button><button type="button" className="btn btn-link" onClick={onCancel}>Huỷ</button></div>
   </form>;
 }
 
@@ -222,11 +222,11 @@ export function ExamAdmin() {
   }
 
   if (room) return <LiveMonitor exam={room} onBack={() => { setRoom(null); load(); }} />;
-  return <div className="card">
+  return <div className="panel panel-body">
     <h2>Quản lý đề thi</h2>
     {creating ? <ExamForm onSaved={() => { setCreating(false); load(); }} onCancel={() => setCreating(false)} />
-      : <button className="submit small" onClick={() => setCreating(true)}>+ Tạo đề thi</button>}
-    {error && <div className="error" role="alert">{error}</div>}
+      : <button className="btn btn-primary" onClick={() => setCreating(true)}>+ Tạo đề thi</button>}
+    {error && <div className="alert alert-danger" role="alert">{error}</div>}
     <div className="table-wrap"><table>
       <thead><tr><th>Đề thi</th><th>Câu</th><th>Phút</th><th>Trạng thái</th><th>Lượt làm</th><th>Giao cho</th><th></th></tr></thead>
       <tbody>
@@ -234,18 +234,18 @@ export function ExamAdmin() {
           <td>{e.title}{e.live && ' 🔴'}</td><td>{e._count.questions}</td><td>{e.durationMinutes}</td><td>{STATUS_LABEL[e.status]}</td><td>{e._count.attempts}</td>
           <td>{e.assignAll ? 'Tất cả' : e.groups.map(g => g.group.name).join(', ') || '—'}</td>
           <td className="actions">
-            {e.status === 'DRAFT' && <button className="link" onClick={() => setStatus(e.id, 'PUBLISHED')}>Mở thi</button>}
-            {e.status === 'PUBLISHED' && <button className="link" onClick={() => setStatus(e.id, 'CLOSED')}>Đóng</button>}
-            {e.status === 'CLOSED' && <button className="link" onClick={() => setStatus(e.id, 'PUBLISHED')}>Mở lại</button>}
-            {e.live && e.status === 'PUBLISHED' && <button className="link" onClick={() => setRoom(e)}>Vào phòng</button>}
-            <button className="link" onClick={() => showResults(e)}>Kết quả</button>
+            {e.status === 'DRAFT' && <button className="btn btn-link" onClick={() => setStatus(e.id, 'PUBLISHED')}>Mở thi</button>}
+            {e.status === 'PUBLISHED' && <button className="btn btn-link" onClick={() => setStatus(e.id, 'CLOSED')}>Đóng</button>}
+            {e.status === 'CLOSED' && <button className="btn btn-link" onClick={() => setStatus(e.id, 'PUBLISHED')}>Mở lại</button>}
+            {e.live && e.status === 'PUBLISHED' && <button className="btn btn-link" onClick={() => setRoom(e)}>Vào phòng</button>}
+            <button className="btn btn-link" onClick={() => showResults(e)}>Kết quả</button>
           </td>
         </tr>)}
         {exams.length === 0 && <tr><td colSpan={7} className="muted">Chưa có đề thi nào.</td></tr>}
       </tbody>
     </table></div>
     {results && <>
-      <h3>Kết quả: {results.exam.title} <a className="link" href={`/api/exams/${results.exam.id}/results.csv`}>Tải CSV</a> <button className="link" onClick={() => setResults(null)}>Ẩn</button></h3>
+      <h3>Kết quả: {results.exam.title} <a className="btn btn-link" href={`/api/exams/${results.exam.id}/results.csv`}>Tải CSV</a> <button className="btn btn-link" onClick={() => setResults(null)}>Ẩn</button></h3>
       <div className="table-wrap"><table>
         <thead><tr><th>Nhân viên</th><th>Số lần thi</th><th>Điểm cao nhất</th><th>Kết quả</th><th>Trạng thái</th><th>Rời tab</th></tr></thead>
         <tbody>{results.rows.map(r => <tr key={r.id}>

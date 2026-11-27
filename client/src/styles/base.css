@@ -1,0 +1,22 @@
+@import '@fontsource-variable/inter/index.css';
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-width: 320px;
+  font-family: var(--font-sans); font-size: var(--fs-md); line-height: 1.5;
+  color: var(--text); background: var(--bg);
+  text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4, p { margin: 0; }
+a { color: var(--primary-600); text-underline-offset: 2px; }
+a:hover { color: var(--primary-800); }
+button, input, select, textarea { font: inherit; color: inherit; }
+img { max-width: 100%; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.num, td.num, th.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-muted); font-size: var(--fs-sm); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

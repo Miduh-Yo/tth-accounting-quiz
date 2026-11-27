@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { BookOpenCheck, ShieldCheck, Users, Eye, EyeOff, ArrowRight, LogOut, KeyRound } from 'lucide-react';
+import { Fragment, useEffect, useState } from 'react';
+import { AlertCircle, BarChart3, BookOpen, ClipboardCheck, Eye, EyeOff, FileText, KeyRound, ListChecks, LogOut, Menu, ScrollText, Users } from 'lucide-react';
 import logo from './assets/tth-logo.jpg';
 import { api } from './api.js';
 import UserAdmin from './UserAdmin.jsx';
@@ -12,11 +12,11 @@ import Documents from './Documents.jsx';
 
 const ROLE_LABEL = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Quản trị viên', EMPLOYEE: 'Nhân viên' };
 
-function PasswordInput({ value, onChange, placeholder, autoComplete }) {
+function PasswordInput({ value, onChange, autoComplete }) {
   const [show, setShow] = useState(false);
   return <div className="password-wrap">
     <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
-      placeholder={placeholder} autoComplete={autoComplete} required />
+      autoComplete={autoComplete} required />
     <button type="button" className="eye" onClick={() => setShow(!show)} aria-label="Hiện hoặc ẩn mật khẩu">
       {show ? <EyeOff /> : <Eye />}
     </button>
@@ -38,29 +38,22 @@ function Login({ onLogin }) {
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   }
 
-  return <section className="hero">
-    <div className="intro">
-      <div className="eyebrow"><BookOpenCheck size={16} /> TTH GROUP · ACCOUNTING</div>
-      <h1>Kiến thức vững vàng.<br /><em>Nghiệp vụ chuẩn xác.</em></h1>
-      <p>Nền tảng kiểm tra và đánh giá kiến thức kế toán dành cho đội ngũ TTH Group.</p>
-      <div className="features">
-        <div><ShieldCheck /><span><b>Đánh giá có căn cứ</b><small>Câu hỏi gắn với tài liệu và quy định được duyệt.</small></span></div>
-        <div><Users /><span><b>Thi tập trung</b><small>Tổ chức phòng thi đồng bộ cho nhân sự.</small></span></div>
-      </div>
+  return <form className="auth-card" onSubmit={submit}>
+    <img className="logo" src={logo} alt="TTH Group" />
+    <h1>Đăng nhập</h1>
+    <p className="lead">Hệ thống đào tạo nội bộ TTH Accounting Quiz</p>
+    <div style={{ display: 'grid', gap: 16 }}>
+      <label className="field">Tên đăng nhập
+        <input value={account} onChange={e => setAccount(e.target.value)} autoComplete="username" autoFocus required />
+      </label>
+      <label className="field">Mật khẩu
+        <PasswordInput value={password} onChange={setPassword} autoComplete="current-password" />
+      </label>
+      {error && <div className="alert alert-danger" role="alert"><AlertCircle />{error}</div>}
     </div>
-    <form className="login" onSubmit={submit}>
-      <div className="login-mark"><BookOpenCheck size={23} /></div>
-      <h2>Đăng nhập hệ thống</h2>
-      <p className="muted">Sử dụng tài khoản được cấp bởi quản trị viên.</p>
-      <label>Tên đăng nhập</label>
-      <input value={account} onChange={e => setAccount(e.target.value)} placeholder="Nhập tên đăng nhập" autoComplete="username" required />
-      <label>Mật khẩu</label>
-      <PasswordInput value={password} onChange={setPassword} placeholder="Nhập mật khẩu" autoComplete="current-password" />
-      {error && <div className="error" role="alert">{error}</div>}
-      <button className="submit" type="submit" disabled={busy}>{busy ? 'Đang xử lý…' : 'Đăng nhập'} <ArrowRight size={18} /></button>
-      <div className="secure"><ShieldCheck size={15} /> Tài khoản nội bộ · Không tự đăng ký</div>
-    </form>
-  </section>;
+    <button className={`btn btn-primary btn-block${busy ? ' btn-loading' : ''}`} type="submit" disabled={busy}>{busy ? 'Đang xử lý' : 'Đăng nhập'}</button>
+    <p className="auth-foot">Tài khoản do quản trị viên cấp, không tự đăng ký.</p>
+  </form>;
 }
 
 function ChangePassword({ forced, onDone, onCancel }) {
@@ -78,56 +71,86 @@ function ChangePassword({ forced, onDone, onCancel }) {
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   }
 
-  return <section className="center">
-    <form className="login" onSubmit={submit}>
-      <div className="login-mark"><KeyRound size={23} /></div>
-      <h2>Đổi mật khẩu</h2>
-      <p className="muted">{forced ? 'Bạn cần đổi mật khẩu tạm trước khi tiếp tục.' : 'Nhập mật khẩu hiện tại và mật khẩu mới.'} Tối thiểu 10 ký tự, gồm chữ hoa, chữ thường và chữ số.</p>
-      <label>Mật khẩu hiện tại</label>
-      <PasswordInput value={cur} onChange={setCur} placeholder="Mật khẩu hiện tại" autoComplete="current-password" />
-      <label>Mật khẩu mới</label>
-      <PasswordInput value={next} onChange={setNext} placeholder="Mật khẩu mới" autoComplete="new-password" />
-      {error && <div className="error" role="alert">{error}</div>}
-      <button className="submit" type="submit" disabled={busy}>{busy ? 'Đang xử lý…' : 'Cập nhật mật khẩu'}</button>
-      {!forced && <button type="button" className="link" onClick={onCancel}>Huỷ</button>}
-    </form>
-  </section>;
+  return <form className="auth-card" onSubmit={submit}>
+    <img className="logo" src={logo} alt="TTH Group" />
+    <h1>Đổi mật khẩu</h1>
+    <p className="lead">{forced ? 'Bạn cần đổi mật khẩu tạm trước khi tiếp tục.' : 'Nhập mật khẩu hiện tại và mật khẩu mới.'} Tối thiểu 10 ký tự, gồm chữ hoa, chữ thường và số.</p>
+    <div style={{ display: 'grid', gap: 16 }}>
+      <label className="field">Mật khẩu hiện tại
+        <PasswordInput value={cur} onChange={setCur} autoComplete="current-password" />
+      </label>
+      <label className="field">Mật khẩu mới
+        <PasswordInput value={next} onChange={setNext} autoComplete="new-password" />
+      </label>
+      {error && <div className="alert alert-danger" role="alert"><AlertCircle />{error}</div>}
+    </div>
+    <button className={`btn btn-primary btn-block${busy ? ' btn-loading' : ''}`} type="submit" disabled={busy}>{busy ? 'Đang xử lý' : 'Cập nhật mật khẩu'}</button>
+    {!forced && <button type="button" className="btn btn-ghost btn-block" style={{ marginTop: 8 }} onClick={onCancel}>Huỷ</button>}
+  </form>;
 }
 
-function Home({ user, onChangePassword }) {
+const NAV = [
+  { group: 'Làm bài', items: [
+    { id: 'exams', label: 'Bài thi', icon: ClipboardCheck, title: 'Bài thi của tôi', desc: 'Các đề thi được giao và kết quả của bạn.' },
+    { id: 'docs', label: 'Tài liệu', icon: BookOpen, title: 'Tài liệu & quy định', desc: 'Văn bản làm căn cứ cho câu hỏi.' }] },
+  { group: 'Quản trị', admin: true, items: [
+    { id: 'questions', label: 'Câu hỏi', icon: ListChecks, title: 'Ngân hàng câu hỏi', desc: 'Soạn, nhập và duyệt câu hỏi.' },
+    { id: 'manage', label: 'Đề thi & nhóm', icon: FileText, title: 'Đề thi & nhóm', desc: 'Tạo đề, giao đề và quản lý nhóm nhân viên.' },
+    { id: 'reports', label: 'Báo cáo', icon: BarChart3, title: 'Báo cáo tổng hợp', desc: 'Tỷ lệ đúng theo chủ đề và theo nhân viên.' },
+    { id: 'users', label: 'Tài khoản', icon: Users, title: 'Quản lý tài khoản', desc: 'Tạo, khoá và đặt lại mật khẩu người dùng.' },
+    { id: 'audit', label: 'Nhật ký', icon: ScrollText, title: 'Nhật ký hoạt động', desc: 'Lịch sử thao tác trên hệ thống.', superOnly: true }] }
+];
+
+function Shell({ user, onChangePassword, onLogout }) {
   const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
-  // Mỗi nhóm chức năng một tab để trang không quá dài; tab hiện tại nằm trên URL (#exams…) nên tải lại vẫn giữ.
-  const tabs = [
-    { id: 'exams', label: 'Bài thi', show: true, view: <MyExams /> },
-    { id: 'docs', label: 'Tài liệu', show: true, view: <Documents isAdmin={isAdmin} /> },
-    { id: 'questions', label: 'Câu hỏi', show: isAdmin, view: <QuestionBank /> },
-    { id: 'manage', label: 'Đề thi & nhóm', show: isAdmin, view: <><ExamAdmin /><GroupAdmin /></> },
-    { id: 'reports', label: 'Báo cáo', show: isAdmin, view: <Reports /> },
-    { id: 'users', label: 'Tài khoản', show: isAdmin, view: <UserAdmin me={user} /> },
-    { id: 'audit', label: 'Nhật ký', show: user.role === 'SUPER_ADMIN', view: <AuditLog /> }
-  ].filter(t => t.show);
-  const fromHash = () => { const h = window.location.hash.slice(1); return tabs.some(t => t.id === h) ? h : 'exams'; };
+  const groups = NAV.map(g => ({ ...g, items: g.items.filter(i => (!g.admin || isAdmin) && (!i.superOnly || user.role === 'SUPER_ADMIN')) })).filter(g => g.items.length);
+  const all = groups.flatMap(g => g.items);
+  const views = {
+    exams: <MyExams />, docs: <Documents isAdmin={isAdmin} />, questions: <QuestionBank />,
+    manage: <div className="stack"><ExamAdmin /><GroupAdmin /></div>, reports: <Reports />, users: <UserAdmin me={user} />, audit: <AuditLog />
+  };
+  // Tab hiện tại nằm trên URL (#exams…) nên tải lại vẫn giữ.
+  const fromHash = () => { const h = window.location.hash.slice(1); return all.some(t => t.id === h) ? h : 'exams'; };
   const [tab, setTab] = useState(fromHash);
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     const onHash = () => setTab(fromHash());
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
-  const go = id => { window.location.hash = id; setTab(id); };
-  const current = tabs.find(t => t.id === tab) ?? tabs[0];
+  const go = id => { window.location.hash = id; setTab(id); setOpen(false); };
+  const current = all.find(t => t.id === tab) ?? all[0];
 
-  return <section className="dash">
-    <div className="card">
-      <h2>Xin chào, {user.fullName}</h2>
-      <p className="muted">Vai trò: <b>{ROLE_LABEL[user.role]}</b> · Tài khoản: {user.username}</p>
-      <button className="link" onClick={onChangePassword}><KeyRound size={14} /> Đổi mật khẩu</button>
+  return <div className="app">
+    <aside className={open ? 'sidebar open' : 'sidebar'} aria-label="Điều hướng">
+      <div className="sidebar-brand"><img src={logo} alt="TTH Group" /><small>Đào tạo nội bộ · Kế toán</small></div>
+      <nav className="nav">
+        {groups.map(g => <Fragment key={g.group}>
+          <div className="nav-group">{g.group}</div>
+          {g.items.map(i => <button key={i.id} className={i.id === current.id ? 'nav-item active' : 'nav-item'}
+            aria-current={i.id === current.id ? 'page' : undefined} onClick={() => go(i.id)}><i.icon />{i.label}</button>)}
+        </Fragment>)}
+      </nav>
+      <div className="sidebar-user">
+        <div className="user-name">{user.fullName}</div>
+        <div className="user-meta">{ROLE_LABEL[user.role]} · {user.username}</div>
+        <button className="nav-item" onClick={onChangePassword}><KeyRound />Đổi mật khẩu</button>
+        <button className="nav-item" onClick={onLogout}><LogOut />Đăng xuất</button>
+      </div>
+    </aside>
+    {open && <div className="scrim" onClick={() => setOpen(false)} />}
+    <div className="main">
+      <div className="mobile-bar">
+        <button className="btn btn-secondary btn-sm" aria-label="Mở menu" onClick={() => setOpen(true)}><Menu /></button>
+        <span className="title">{current.label}</span>
+      </div>
+      <main className="content">
+        <header className="page-head"><div><h1>{current.title}</h1><p>{current.desc}</p></div></header>
+        {views[current.id]}
+      </main>
+      <footer className="footer"><span>© {new Date().getFullYear()} TTH Group</span><span>TTH Accounting Quiz · Phiên bản 0.11</span></footer>
     </div>
-    <nav className="tabs" aria-label="Chức năng">
-      {tabs.map(t => <button key={t.id} className={t.id === current.id ? 'tab active' : 'tab'}
-        aria-current={t.id === current.id ? 'page' : undefined} onClick={() => go(t.id)}>{t.label}</button>)}
-    </nav>
-    {current.view}
-  </section>;
+  </div>;
 }
 
 export default function App() {
@@ -144,20 +167,10 @@ export default function App() {
     setUser(null); setChanging(false);
   }
 
+  if (!loading && user && !user.mustChangePassword && !changing) return <Shell user={user} onChangePassword={() => setChanging(true)} onLogout={logout} />;
   let body;
-  if (loading) body = <section className="center"><p className="muted">Đang tải…</p></section>;
+  if (loading) body = <p className="muted">Đang tải…</p>;
   else if (!user) body = <Login onLogin={setUser} />;
-  else if (user.mustChangePassword || changing) {
-    body = <ChangePassword forced={user.mustChangePassword} onDone={u => { setUser(u); setChanging(false); }} onCancel={() => setChanging(false)} />;
-  } else body = <Home user={user} onChangePassword={() => setChanging(true)} />;
-
-  return <main className="page">
-    <div className="topbar">
-      <img src={logo} alt="TTH Group" />
-      {user ? <button className="link" onClick={logout}><LogOut size={14} /> Đăng xuất ({user.username})</button>
-            : <span>HỆ THỐNG ĐÀO TẠO NỘI BỘ</span>}
-    </div>
-    {body}
-    <footer>© {new Date().getFullYear()} TTH Group · TTH Accounting Quiz <span>Phiên bản 0.11</span></footer>
-  </main>;
+  else body = <ChangePassword forced={user.mustChangePassword} onDone={u => { setUser(u); setChanging(false); }} onCancel={() => setChanging(false)} />;
+  return <main className="auth">{body}{user && <button className="btn btn-ghost btn-sm" style={{ marginTop: 16 }} onClick={logout}>Đăng xuất</button>}</main>;
 }

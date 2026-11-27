@@ -41,20 +41,20 @@ function ImportPanel({ onDone, onCancel }) {
       if (commit && r.imported > 0) onDone(r.imported);
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   }
-  return <div className="q-form">
+  return <div className="form-panel">
     <h3>Nhập câu hỏi từ Excel / CSV</h3>
-    <p className="muted">Dùng file mẫu Excel (.xlsx) bên dưới; cũng nhận CSV UTF-8. Cột "Đáp án đúng" ghi chữ cái (A, hoặc A;C cho nhiều đáp án). Câu nhập vào ở trạng thái Nháp. Cột "Tài liệu" ghi số hiệu hoặc tên tài liệu có trong thư viện (không bắt buộc). Tối đa 500 câu. <a className="link" href="/api/questions/import-template.xlsx">Tải mẫu Excel</a> · <button type="button" className="link" onClick={downloadTemplate}>Mẫu CSV</button></p>
+    <p className="muted">Dùng file mẫu Excel (.xlsx) bên dưới; cũng nhận CSV UTF-8. Cột "Đáp án đúng" ghi chữ cái (A, hoặc A;C cho nhiều đáp án). Câu nhập vào ở trạng thái Nháp. Cột "Tài liệu" ghi số hiệu hoặc tên tài liệu có trong thư viện (không bắt buộc). Tối đa 500 câu. <a className="btn btn-link" href="/api/questions/import-template.xlsx">Tải mẫu Excel</a> · <button type="button" className="btn btn-link" onClick={downloadTemplate}>Mẫu CSV</button></p>
     <input type="file" accept=".xlsx,.csv,text/csv" onChange={pick} />
-    {error && <div className="error" role="alert">{error}</div>}
+    {error && <div className="alert alert-danger" role="alert">{error}</div>}
     {report && <div>
       <p><b>{report.total}</b> dòng · <b>{report.valid}</b> hợp lệ · <b>{report.errors.length}</b> lỗi</p>
       {report.errors.length > 0 && <><p className="muted">Sửa các lỗi sau rồi chọn lại file (không nhập gì cho đến khi hết lỗi):</p>
         <ul>{report.errors.slice(0, 50).map(x => <li key={x.line}>Dòng {x.line}: {x.error}</li>)}</ul></>}
     </div>}
-    <div className="q-actions">
-      <button type="button" className="submit small" disabled={!csv || busy} onClick={() => run(false)}>Kiểm tra</button>
-      <button type="button" className="submit small" disabled={!report || report.errors.length > 0 || report.valid === 0 || busy} onClick={() => run(true)}>Nhập {report?.valid || ''} câu</button>
-      <button type="button" className="link" onClick={onCancel}>Đóng</button>
+    <div className="actions-row">
+      <button type="button" className="btn btn-primary" disabled={!csv || busy} onClick={() => run(false)}>Kiểm tra</button>
+      <button type="button" className="btn btn-primary" disabled={!report || report.errors.length > 0 || report.valid === 0 || busy} onClick={() => run(true)}>Nhập {report?.valid || ''} câu</button>
+      <button type="button" className="btn btn-link" onClick={onCancel}>Đóng</button>
     </div>
   </div>;
 }
@@ -105,9 +105,9 @@ function QuestionForm({ initial, topics, onSaved, onCancel }) {
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   }
 
-  return <form className="q-form" onSubmit={submit}>
+  return <form className="form-panel" onSubmit={submit}>
     <h3>{editing ? 'Sửa câu hỏi' : 'Thêm câu hỏi'}</h3>
-    <div className="q-row">
+    <div className="form-grid">
       <input list="topics" placeholder="Chủ đề (vd: Thuế GTGT)" value={f.topic} onChange={set('topic')} required />
       <datalist id="topics">{topics.map(t => <option key={t} value={t} />)}</datalist>
       <select value={f.type} onChange={changeType}>{Object.entries(TYPE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
@@ -116,12 +116,12 @@ function QuestionForm({ initial, topics, onSaved, onCancel }) {
     </div>
     <textarea rows={3} placeholder="Nội dung câu hỏi" value={f.content} onChange={set('content')} required />
     <div className="q-options">
-      {f.options.map((o, i) => <div key={i} className="q-opt">
+      {f.options.map((o, i) => <div key={i} className="check-row">
         <input type={f.type === 'MULTIPLE' ? 'checkbox' : 'radio'} checked={o.isCorrect} onChange={() => toggleCorrect(i)} aria-label="Đáp án đúng" />
         <input value={o.text} onChange={e => setOptText(i, e.target.value)} placeholder={`Đáp án ${i + 1}`} readOnly={f.type === 'TRUE_FALSE'} required />
-        {f.type !== 'TRUE_FALSE' && f.options.length > 2 && <button type="button" className="link" onClick={() => delOpt(i)}>Xoá</button>}
+        {f.type !== 'TRUE_FALSE' && f.options.length > 2 && <button type="button" className="btn btn-link" onClick={() => delOpt(i)}>Xoá</button>}
       </div>)}
-      {f.type !== 'TRUE_FALSE' && f.options.length < 8 && <button type="button" className="link" onClick={addOpt}>+ Thêm đáp án</button>}
+      {f.type !== 'TRUE_FALSE' && f.options.length < 8 && <button type="button" className="btn btn-link" onClick={addOpt}>+ Thêm đáp án</button>}
     </div>
     <textarea rows={2} placeholder="Giải thích đáp án (không bắt buộc)" value={f.explanation || ''} onChange={set('explanation')} />
     <select value={f.documentId || ''} onChange={set('documentId')}>
@@ -129,10 +129,10 @@ function QuestionForm({ initial, topics, onSaved, onCancel }) {
       {docs.map(d => <option key={d.id} value={d.id}>{d.code ? `${d.code} · ` : ''}{d.title}</option>)}
     </select>
     <input placeholder="Điều/khoản cụ thể (không bắt buộc)" value={f.reference || ''} onChange={set('reference')} />
-    {error && <div className="error" role="alert">{error}</div>}
-    <div className="q-actions">
-      <button className="submit small" type="submit" disabled={busy}>{editing ? 'Lưu thay đổi' : 'Thêm câu hỏi'}</button>
-      <button type="button" className="link" onClick={onCancel}>Huỷ</button>
+    {error && <div className="alert alert-danger" role="alert">{error}</div>}
+    <div className="actions-row">
+      <button className="btn btn-primary" type="submit" disabled={busy}>{editing ? 'Lưu thay đổi' : 'Thêm câu hỏi'}</button>
+      <button type="button" className="btn btn-link" onClick={onCancel}>Huỷ</button>
     </div>
   </form>;
 }
@@ -169,10 +169,10 @@ function GeneratePanel({ topics, onDone, onCancel }) {
     } catch (e) { setError(e.message); } finally { setBusy(false); }
   }
   const set = k => e => setF({ ...f, [k]: e.target.value });
-  return <form className="q-form" onSubmit={run}>
+  return <form className="form-panel" onSubmit={run}>
     <h3>Sinh câu hỏi bằng AI từ ghi chú</h3>
     <p className="muted">Dán nội dung ghi chú/quy định (hoặc tải file .txt, .md, .docx; tối đa ~60.000 ký tự). AI chỉ dùng thông tin trong văn bản; câu hỏi vào ở trạng thái <b>Nháp</b> — bạn cần rà soát từng câu trước khi chuyển sang "Đang dùng".</p>
-    <div className="q-row">
+    <div className="form-grid">
       <input list="topics-gen" placeholder="Chủ đề" value={f.topic} onChange={set('topic')} required />
       <datalist id="topics-gen">{topics.map(t => <option key={t} value={t} />)}</datalist>
       <label>Số câu<input type="number" min="1" max="20" value={f.count} onChange={set('count')} /></label>
@@ -182,10 +182,10 @@ function GeneratePanel({ topics, onDone, onCancel }) {
     <input type="file" accept=".txt,.md,.docx" onChange={pick} />
     {file ? <p className="muted">Đã chọn file: <b>{file.filename}</b></p>
       : <textarea rows={8} placeholder="…hoặc dán nội dung ghi chú vào đây" value={text} onChange={e => setText(e.target.value)} />}
-    {error && <div className="error" role="alert">{error}</div>}
-    <div className="q-actions">
-      <button className="submit small" type="submit" disabled={busy || (!file && text.trim().length === 0)}>{busy ? 'Đang sinh câu hỏi… (có thể mất tới 1 phút)' : 'Sinh câu hỏi'}</button>
-      <button type="button" className="link" onClick={onCancel} disabled={busy}>Đóng</button>
+    {error && <div className="alert alert-danger" role="alert">{error}</div>}
+    <div className="actions-row">
+      <button className="btn btn-primary" type="submit" disabled={busy || (!file && text.trim().length === 0)}>{busy ? 'Đang sinh câu hỏi… (có thể mất tới 1 phút)' : 'Sinh câu hỏi'}</button>
+      <button type="button" className="btn btn-link" onClick={onCancel} disabled={busy}>Đóng</button>
     </div>
   </form>;
 }
@@ -224,28 +224,28 @@ export default function QuestionBank() {
   }
   const setFil = k => e => setFilter({ ...filter, [k]: e.target.value });
 
-  return <div className="card">
+  return <div className="panel panel-body">
     <h2>Ngân hàng câu hỏi</h2>
     {editing
       ? <QuestionForm key={editing.id || 'new'} initial={editing} topics={topics}
           onSaved={() => { setEditing(null); load(); }} onCancel={() => setEditing(null)} />
-      : <div className="q-actions">
-          <button className="submit small" onClick={() => setEditing(blank())}>+ Thêm câu hỏi</button>
-          <button className="link" onClick={() => { setImporting(!importing); setGenerating(false); setNotice(''); }}>Nhập Excel/CSV</button>
-          <button className="link" onClick={() => { setGenerating(!generating); setImporting(false); setNotice(''); }}>Sinh bằng AI</button>
+      : <div className="actions-row">
+          <button className="btn btn-primary" onClick={() => setEditing(blank())}>+ Thêm câu hỏi</button>
+          <button className="btn btn-link" onClick={() => { setImporting(!importing); setGenerating(false); setNotice(''); }}>Nhập Excel/CSV</button>
+          <button className="btn btn-link" onClick={() => { setGenerating(!generating); setImporting(false); setNotice(''); }}>Sinh bằng AI</button>
         </div>}
     {importing && !editing && <ImportPanel onCancel={() => setImporting(false)} onDone={n => { setImporting(false); setNotice(`Đã nhập ${n} câu hỏi (trạng thái Nháp).`); load(); }} />}
     {generating && !editing && <GeneratePanel topics={topics} onCancel={() => setGenerating(false)}
       onDone={r => { setGenerating(false); setNotice(`AI đã tạo ${r.created} câu hỏi (trạng thái Nháp)${r.skipped ? `, bỏ ${r.skipped} câu không hợp lệ` : ''}. Hãy lọc "Nháp" để rà soát.`); setFilter(f => ({ ...f, status: 'DRAFT' })); }} />}
     {notice && <p className="muted">{notice}</p>}
-    <div className="q-row q-filter">
+    <div className="form-grid filter">
       <input placeholder="Tìm theo nội dung…" value={filter.q} onChange={setFil('q')} />
       <select value={filter.topic} onChange={setFil('topic')}><option value="">Mọi chủ đề</option>{topics.map(t => <option key={t}>{t}</option>)}</select>
       <select value={filter.difficulty} onChange={setFil('difficulty')}><option value="">Mọi độ khó</option>{Object.entries(DIFF_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
       <select value={filter.status} onChange={setFil('status')}><option value="">Mọi trạng thái</option>{Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
     </div>
-    {error && <div className="error" role="alert">{error}</div>}
-    {drafts > 0 && !editing && <div className="q-actions"><button className="submit small" onClick={activateDrafts}>Duyệt {drafts} câu Nháp đang lọc → Đang dùng</button></div>}
+    {error && <div className="alert alert-danger" role="alert">{error}</div>}
+    {drafts > 0 && !editing && <div className="actions-row"><button className="btn btn-primary" onClick={activateDrafts}>Duyệt {drafts} câu Nháp đang lọc → Đang dùng</button></div>}
     <div className="table-wrap">
       <table>
         <thead><tr><th>Câu hỏi</th><th>Chủ đề</th><th>Loại</th><th>Độ khó</th><th>Trạng thái</th><th></th></tr></thead>
@@ -254,8 +254,8 @@ export default function QuestionBank() {
             <td title={q.options.map(o => (o.isCorrect ? '✔ ' : '• ') + o.text).join('\n')}>{q.content}</td>
             <td>{q.topic}</td><td>{TYPE_LABEL[q.type]}</td><td>{DIFF_LABEL[q.difficulty]}</td><td>{STATUS_LABEL[q.status]}</td>
             <td className="actions">
-              <button className="link" onClick={() => setEditing(q)}>Sửa</button>
-              {q.status !== 'ARCHIVED' && <button className="link" onClick={() => archive(q.id)}>Lưu trữ</button>}
+              <button className="btn btn-link" onClick={() => setEditing(q)}>Sửa</button>
+              {q.status !== 'ARCHIVED' && <button className="btn btn-link" onClick={() => archive(q.id)}>Lưu trữ</button>}
             </td>
           </tr>)}
           {questions.length === 0 && <tr><td colSpan={6} className="muted">Chưa có câu hỏi nào.</td></tr>}

@@ -26,16 +26,16 @@ export default function Reports() {
       .catch(e => setError(e.message));
   }, [examId, who]);
 
-  return <div className="card">
+  return <div className="panel panel-body">
     <h2>Báo cáo tổng hợp</h2>
-    <div className="q-actions">
+    <div className="actions-row">
       <select value={examId} onChange={e => setExamId(e.target.value)}>
         <option value="">Tất cả đề thi</option>
         {exams.map(x => <option key={x.id} value={x.id}>{x.title}</option>)}
       </select>
-      {who && <span className="muted">Đang xem: <b>{who.fullName}</b> <button className="link" onClick={() => setWho(null)}>Bỏ lọc</button></span>}
+      {who && <span className="muted">Đang xem: <b>{who.fullName}</b> <button className="btn btn-link" onClick={() => setWho(null)}>Bỏ lọc</button></span>}
     </div>
-    {error && <div className="error" role="alert">{error}</div>}
+    {error && <div className="alert alert-danger" role="alert">{error}</div>}
     <h3>Tỷ lệ đúng theo chủ đề {who ? `— ${who.fullName}` : ''}</h3>
     <p className="muted">Sắp từ yếu đến mạnh để biết chủ đề cần đào tạo thêm. Chỉ tính các bài đã nộp.</p>
     <div className="table-wrap"><table>
@@ -53,7 +53,7 @@ export default function Reports() {
       <tbody>
         {employees.map(e => <tr key={e.id}>
           <td>{e.fullName} ({e.username})</td><td>{e.attempts}</td><td>{e.avgPercent}%</td><td>{e.passed}/{e.attempts}</td>
-          <td className="actions"><button className="link" onClick={() => setWho(e)}>Xem theo chủ đề</button></td>
+          <td className="actions"><button className="btn btn-link" onClick={() => setWho(e)}>Xem theo chủ đề</button></td>
         </tr>)}
         {employees.length === 0 && <tr><td colSpan={5} className="muted">Chưa có bài nộp nào.</td></tr>}
       </tbody>

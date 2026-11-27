@@ -45,12 +45,12 @@ export function LiveLobby({ exam, onStarted, onBack }) {
     'room:started': go,
     'room:count': d => setOnline(d.online)
   });
-  return <div className="card">
+  return <div className="panel panel-body">
     <h2>Phòng chờ: {exam.title}</h2>
-    {st.error ? <div className="error" role="alert">{st.error}</div>
+    {st.error ? <div className="alert alert-danger" role="alert">{st.error}</div>
       : <p className="muted">{st.connected ? 'Đã vào phòng. Vui lòng chờ quản trị viên bấm bắt đầu — bài thi sẽ tự mở.' : 'Đang kết nối…'}</p>}
     <p>Thời gian làm bài: <b>{exam.durationMinutes} phút</b> · {exam.questionCount} câu{online != null && <> · Đang online: <b>{online}</b></>}</p>
-    <button className="link" onClick={onBack}>← Rời phòng</button>
+    <button className="btn btn-link" onClick={onBack}>← Rời phòng</button>
   </div>;
 }
 
@@ -76,11 +76,11 @@ export function LiveMonitor({ exam, onBack }) {
   const onlineIds = new Set(snap.online.map(u => u.id));
   const people = [...snap.online, ...snap.submitted.filter(u => !onlineIds.has(u.id))];
 
-  return <div className="card">
+  return <div className="panel panel-body">
     <h2>Giám sát phòng thi: {exam.title}</h2>
-    {(st.error || error) && <div className="error" role="alert">{st.error || error}</div>}
+    {(st.error || error) && <div className="alert alert-danger" role="alert">{st.error || error}</div>}
     <p className="muted">{st.connected ? 'Đang kết nối realtime.' : 'Mất kết nối, đang thử lại…'}</p>
-    {room && !room.started && <button className="submit small" disabled={busy || !st.connected} onClick={start}>Bắt đầu phòng thi</button>}
+    {room && !room.started && <button className="btn btn-primary" disabled={busy || !st.connected} onClick={start}>Bắt đầu phòng thi</button>}
     {room?.started && <p><b>Đã bắt đầu.</b> {left != null && (left > 0 ? <>Còn lại: <b>{fmt(left)}</b></> : 'Đã hết giờ.')}</p>}
     <p>Đang online: <b>{snap.online.length}</b> · Đã nộp: <b>{snap.submitted.length}</b></p>
     <div className="table-wrap"><table>
@@ -93,6 +93,6 @@ export function LiveMonitor({ exam, onBack }) {
         {people.length === 0 && <tr><td colSpan={3} className="muted">Chưa có ai vào phòng.</td></tr>}
       </tbody>
     </table></div>
-    <button className="link" onClick={onBack}>← Quay lại</button>
+    <button className="btn btn-link" onClick={onBack}>← Quay lại</button>
   </div>;
 }

@@ -1,0 +1,54 @@
+/* Design tokens – mọi màu, cỡ chữ, khoảng cách lấy từ đây. */
+:root {
+  --font-sans: 'Inter Variable', Inter, 'Segoe UI', system-ui, -apple-system, sans-serif;
+
+  /* Màu thương hiệu (gốc #00529c, lấy từ logo) */
+  --primary-50: #eef5fb;
+  --primary-100: #d9e8f5;
+  --primary-200: #b3d1ec;
+  --primary-500: #0a64b0;
+  --primary-600: #00529c;
+  --primary-700: #004483;
+  --primary-800: #00366a;
+
+  /* Thang xám trung tính */
+  --gray-0: #ffffff;
+  --gray-25: #f7f8fa;
+  --gray-50: #f1f3f5;
+  --gray-100: #e8ebee;
+  --gray-200: #dde1e6;
+  --gray-300: #c6ccd3;
+  --gray-400: #98a1ab;
+  --gray-500: #6b7580;
+  --gray-600: #515a64;
+  --gray-700: #3a424b;
+  --gray-900: #1a2027;
+
+  /* Màu ngữ nghĩa: nền nhạt + chữ đậm + viền */
+  --success-bg: #e9f6ef; --success-fg: #11693f; --success-bd: #b5dfc8; --success-solid: #1a8a55;
+  --warning-bg: #fdf3e1; --warning-fg: #8a5300; --warning-bd: #f1d49c; --warning-solid: #c07a0a;
+  --danger-bg: #fdecea;  --danger-fg: #a4261b;  --danger-bd: #f3bdb8; --danger-solid: #c8382c;
+  --info-bg: var(--primary-50); --info-fg: var(--primary-700); --info-bd: var(--primary-200);
+  --neutral-bg: var(--gray-50); --neutral-fg: var(--gray-600); --neutral-bd: var(--gray-200);
+
+  --bg: var(--gray-25);
+  --surface: var(--gray-0);
+  --border: var(--gray-200);
+  --border-soft: var(--gray-100);
+  --text: var(--gray-900);
+  --text-muted: var(--gray-500);
+  --focus: var(--primary-500);
+
+  /* Cỡ chữ */
+  --fs-xs: 12px; --fs-sm: 13px; --fs-md: 14px; --fs-lg: 16px; --fs-xl: 20px; --fs-2xl: 24px;
+
+  /* Khoảng cách theo thang 4px */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-6: 24px; --sp-8: 32px; --sp-12: 48px;
+
+  --radius: 6px;
+  --radius-lg: 8px;
+  --shadow-pop: 0 8px 24px rgba(26, 32, 39, 0.14);
+  --sidebar-w: 240px;
+  --control-h: 38px;
+  --ease: 140ms ease;
+}

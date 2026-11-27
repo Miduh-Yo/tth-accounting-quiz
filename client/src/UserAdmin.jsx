@@ -50,9 +50,9 @@ export default function UserAdmin({ me }) {
   const set = k => e => setForm({ ...form, [k]: e.target.value });
   const canManage = u => RANK[u.role] < RANK[me.role];
 
-  return <div className="card">
+  return <div className="panel panel-body">
     <h2>Quản lý tài khoản</h2>
-    <form className="user-form" onSubmit={create}>
+    <form className="form-grid cols-3" onSubmit={create}>
       <input placeholder="Tên đăng nhập" value={form.username} onChange={set('username')} required />
       <input placeholder="Họ và tên" value={form.fullName} onChange={set('fullName')} required />
       <input placeholder="Email (không bắt buộc)" type="email" value={form.email} onChange={set('email')} />
@@ -61,10 +61,10 @@ export default function UserAdmin({ me }) {
         {me.role === 'SUPER_ADMIN' && <option value="ADMIN">Quản trị viên</option>}
       </select>
       <input placeholder="Mật khẩu tạm" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} required />
-      <button className="submit small" type="submit" disabled={busy}>Tạo tài khoản</button>
+      <button className="btn btn-primary" type="submit" disabled={busy}>Tạo tài khoản</button>
     </form>
     <p className="muted">Người dùng mới phải đổi mật khẩu ở lần đăng nhập đầu tiên.</p>
-    {error && <div className="error" role="alert">{error}</div>}
+    {error && <div className="alert alert-danger" role="alert">{error}</div>}
     <div className="table-wrap">
       <table>
         <thead><tr><th>Tài khoản</th><th>Họ tên</th><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead>
@@ -79,18 +79,18 @@ export default function UserAdmin({ me }) {
             </select></td>
             <td>{STATUS_LABEL[u.status]}</td>
             <td className="actions">
-              <button className="link" onClick={() => saveEdit(u)} disabled={!edit.fullName.trim()}>Lưu</button>
-              <button className="link" onClick={() => setEditId(null)}>Huỷ</button>
+              <button className="btn btn-link" onClick={() => saveEdit(u)} disabled={!edit.fullName.trim()}>Lưu</button>
+              <button className="btn btn-link" onClick={() => setEditId(null)}>Huỷ</button>
             </td>
           </tr> : <tr key={u.id}>
             <td>{u.username}</td><td>{u.fullName}</td><td>{u.email || '—'}</td><td>{ROLE_LABEL[u.role]}</td><td>{STATUS_LABEL[u.status]}</td>
             <td className="actions">
               {u.id !== me.id && canManage(u) && <>
-                <button className="link" onClick={() => startEdit(u)}>Sửa</button>
+                <button className="btn btn-link" onClick={() => startEdit(u)}>Sửa</button>
                 {u.status === 'ACTIVE'
-                  ? <button className="link" onClick={() => patch(u.id, { status: 'LOCKED' })}>Khoá</button>
-                  : <button className="link" onClick={() => patch(u.id, { status: 'ACTIVE' })}>Mở khoá</button>}
-                <button className="link" onClick={() => resetPassword(u)}>Đặt lại MK</button>
+                  ? <button className="btn btn-link" onClick={() => patch(u.id, { status: 'LOCKED' })}>Khoá</button>
+                  : <button className="btn btn-link" onClick={() => patch(u.id, { status: 'ACTIVE' })}>Mở khoá</button>}
+                <button className="btn btn-link" onClick={() => resetPassword(u)}>Đặt lại MK</button>
               </>}
             </td>
           </tr>)}

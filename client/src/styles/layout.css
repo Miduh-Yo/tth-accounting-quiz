@@ -1,0 +1,56 @@
+/* ---------- Khung ứng dụng ---------- */
+.app { min-height: 100vh; display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); }
+.sidebar {
+  position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
+  background: var(--surface); border-right: 1px solid var(--border); padding: var(--sp-4) var(--sp-3);
+}
+.sidebar-brand { padding: var(--sp-2) var(--sp-2) var(--sp-4); border-bottom: 1px solid var(--border-soft); margin-bottom: var(--sp-3); }
+.sidebar-brand img { width: 84px; height: auto; display: block; }
+.sidebar-brand small { display: block; margin-top: var(--sp-2); font-size: var(--fs-xs); color: var(--text-muted); }
+.nav { display: flex; flex-direction: column; gap: var(--sp-1); flex: 1; overflow-y: auto; }
+.nav-group { margin: var(--sp-4) var(--sp-2) var(--sp-1); font-size: var(--fs-xs); font-weight: 600; color: var(--gray-400); letter-spacing: .04em; text-transform: uppercase; }
+.nav-group:first-child { margin-top: 0; }
+.nav-item {
+  display: flex; align-items: center; gap: var(--sp-3); width: 100%; height: 36px; padding: 0 var(--sp-3);
+  border: 0; border-radius: var(--radius); background: transparent; color: var(--gray-600);
+  font-size: var(--fs-md); font-weight: 500; text-align: left; cursor: pointer; transition: background var(--ease), color var(--ease);
+}
+.nav-item svg { width: 17px; height: 17px; flex-shrink: 0; color: var(--gray-400); }
+.nav-item:hover { background: var(--gray-50); color: var(--text); }
+.nav-item.active { background: var(--primary-50); color: var(--primary-700); font-weight: 600; }
+.nav-item.active svg { color: var(--primary-600); }
+.sidebar-user { border-top: 1px solid var(--border-soft); padding-top: var(--sp-3); margin-top: var(--sp-3); }
+.user-name { font-weight: 600; font-size: var(--fs-md); padding: 0 var(--sp-2); overflow-wrap: anywhere; }
+.user-meta { padding: 0 var(--sp-2) var(--sp-2); font-size: var(--fs-xs); color: var(--text-muted); }
+.sidebar-user .nav-item { height: 32px; font-size: var(--fs-sm); }
+
+.mobile-bar { display: none; }
+.main { min-width: 0; display: flex; flex-direction: column; min-height: 100vh; }
+.content { width: min(1200px, 100%); margin: 0 auto; padding: var(--sp-8) var(--sp-8) var(--sp-6); flex: 1; }
+.page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); margin-bottom: var(--sp-6); flex-wrap: wrap; }
+.page-head h1 { font-size: var(--fs-2xl); line-height: 1.25; font-weight: 600; letter-spacing: -.01em; }
+.page-head p { margin-top: var(--sp-1); color: var(--text-muted); font-size: var(--fs-md); }
+.stack { display: grid; gap: var(--sp-6); }
+.footer { padding: var(--sp-4) var(--sp-8); font-size: var(--fs-xs); color: var(--gray-400); display: flex; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
+
+/* ---------- Đăng nhập / đổi mật khẩu ---------- */
+.auth { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--sp-6) var(--sp-4); background: var(--bg); }
+.auth-card { width: min(400px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--sp-8); }
+.auth-card .logo { width: 96px; display: block; margin: 0 auto var(--sp-6); }
+.auth-card h1 { font-size: var(--fs-xl); font-weight: 600; text-align: center; }
+.auth-card .lead { text-align: center; margin: var(--sp-1) 0 var(--sp-6); color: var(--text-muted); font-size: var(--fs-sm); }
+.auth-card .btn-primary { margin-top: var(--sp-6); }
+.auth-foot { margin-top: var(--sp-4); font-size: var(--fs-xs); color: var(--gray-400); text-align: center; }
+
+@media (max-width: 900px) {
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .sidebar { position: fixed; inset: 0 auto 0 0; width: min(280px, 86vw); z-index: 30; transform: translateX(-100%); transition: transform 180ms ease; box-shadow: none; }
+  .sidebar.open { transform: none; box-shadow: var(--shadow-pop); }
+  .scrim { position: fixed; inset: 0; background: rgba(26, 32, 39, .35); z-index: 20; }
+  .mobile-bar { display: flex; align-items: center; gap: var(--sp-3); height: 52px; padding: 0 var(--sp-4); background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+  .mobile-bar img { height: 26px; width: auto; }
+  .mobile-bar .title { font-weight: 600; font-size: var(--fs-md); flex: 1; }
+  .content { padding: var(--sp-6) var(--sp-4) var(--sp-4); }
+  .footer { padding: var(--sp-4); }
+  .page-head h1 { font-size: var(--fs-xl); }
+}
