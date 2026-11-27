@@ -46,6 +46,7 @@ usersRouter.post('/', async (req, res, next) => {
 
 const updateSchema = z.object({
   fullName: z.string().trim().min(1).max(100).optional(),
+  email: z.string().trim().toLowerCase().email('Email không hợp lệ').nullable().optional().or(z.literal('').transform(() => null)),
   status: z.enum(['ACTIVE', 'LOCKED', 'DISABLED']).optional(),
   role: z.enum(['ADMIN', 'EMPLOYEE']).optional(),
   newPassword: passwordSchema.optional()
@@ -59,10 +60,11 @@ usersRouter.patch('/:id', async (req, res, next) => {
     if (!target) return res.status(404).json({ error: 'Không tìm thấy người dùng' });
     if (target.id === req.user.id) return res.status(400).json({ error: 'Không thể tự sửa tài khoản của mình ở đây' });
     if (!canManage(req.user, target.role)) return res.status(403).json({ error: 'Bạn không có quyền với người dùng này' });
-    const { fullName, status, role, newPassword } = parsed.data;
+    const { fullName, email, status, role, newPassword } = parsed.data;
     if (role && !canManage(req.user, role)) return res.status(403).json({ error: 'Bạn không có quyền gán vai trò này' });
 
-    const data = { fullName, status, role };
+    const data = { fullName, email, status, role };
+    if (role && role !== target.role) data.tokenVersion = { increment: 1 };
     if (status && status !== 'ACTIVE') data.tokenVersion = { increment: 1 };
     if (status === 'ACTIVE') { data.failedLogins = 0; data.lockedUntil = null; }
     if (newPassword) {
@@ -72,7 +74,10 @@ usersRouter.patch('/:id', async (req, res, next) => {
     }
     const user = await prisma.user.update({ where: { id: target.id }, data });
     await audit(req, 'USER_UPDATED', { targetType: 'User', targetId: user.id,
-      detail: [status && `status=${status}`, role && `role=${role}`, fullName && 'fullName', newPassword && 'password reset'].filter(Boolean).join(', ') });
+      detail: [status && `status=${status}`, role && `role=${role}`, fullName && 'fullName', email !== undefined && 'email', newPassword && 'password reset'].filter(Boolean).join(', ') });
     res.json({ user: publicUser(user) });
-  } catch (e) { next(e); }
+  } catch (e) {
+    if (e.code === 'P2002') return res.status(409).json({ error: 'Email đã được dùng bởi tài khoản khác' });
+    next(e);
+  }
 });

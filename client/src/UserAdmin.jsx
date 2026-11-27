@@ -35,6 +35,18 @@ export default function UserAdmin({ me }) {
     if (pw) patch(u.id, { newPassword: pw });
   }
 
+  const [editId, setEditId] = useState(null);
+  const [edit, setEdit] = useState({ fullName: '', email: '', role: 'EMPLOYEE' });
+  const startEdit = u => { setEditId(u.id); setEdit({ fullName: u.fullName, email: u.email || '', role: u.role }); };
+  async function saveEdit(u) {
+    setError('');
+    const body = { fullName: edit.fullName, email: edit.email };
+    if (edit.role !== u.role) body.role = edit.role;
+    try { await api(`/users/${u.id}`, { method: 'PATCH', body }); setEditId(null); await load(); }
+    catch (e) { setError(e.message); }
+  }
+  const setE = k => e => setEdit({ ...edit, [k]: e.target.value });
+
   const set = k => e => setForm({ ...form, [k]: e.target.value });
   const canManage = u => RANK[u.role] < RANK[me.role];
 
@@ -55,12 +67,26 @@ export default function UserAdmin({ me }) {
     {error && <div className="error" role="alert">{error}</div>}
     <div className="table-wrap">
       <table>
-        <thead><tr><th>Tài khoản</th><th>Họ tên</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead>
+        <thead><tr><th>Tài khoản</th><th>Họ tên</th><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead>
         <tbody>
-          {users.map(u => <tr key={u.id}>
-            <td>{u.username}</td><td>{u.fullName}</td><td>{ROLE_LABEL[u.role]}</td><td>{STATUS_LABEL[u.status]}</td>
+          {users.map(u => editId === u.id ? <tr key={u.id}>
+            <td>{u.username}</td>
+            <td><input value={edit.fullName} onChange={setE('fullName')} placeholder="Họ và tên" required /></td>
+            <td><input type="email" value={edit.email} onChange={setE('email')} placeholder="Email" /></td>
+            <td><select value={edit.role} onChange={setE('role')}>
+              <option value="EMPLOYEE">Nhân viên</option>
+              {me.role === 'SUPER_ADMIN' && <option value="ADMIN">Quản trị viên</option>}
+            </select></td>
+            <td>{STATUS_LABEL[u.status]}</td>
+            <td className="actions">
+              <button className="link" onClick={() => saveEdit(u)} disabled={!edit.fullName.trim()}>Lưu</button>
+              <button className="link" onClick={() => setEditId(null)}>Huỷ</button>
+            </td>
+          </tr> : <tr key={u.id}>
+            <td>{u.username}</td><td>{u.fullName}</td><td>{u.email || '—'}</td><td>{ROLE_LABEL[u.role]}</td><td>{STATUS_LABEL[u.status]}</td>
             <td className="actions">
               {u.id !== me.id && canManage(u) && <>
+                <button className="link" onClick={() => startEdit(u)}>Sửa</button>
                 {u.status === 'ACTIVE'
                   ? <button className="link" onClick={() => patch(u.id, { status: 'LOCKED' })}>Khoá</button>
                   : <button className="link" onClick={() => patch(u.id, { status: 'ACTIVE' })}>Mở khoá</button>}
