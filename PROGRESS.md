@@ -22,6 +22,7 @@
 - Màn làm bài: thanh cố định (tên đề, tiến độ, đồng hồ đổi màu khi còn < 5 phút), đáp án dạng hàng chọn lớn, bảng số câu; màn kết quả có điểm lớn + đúng/sai từng câu
 - Các màn quản trị: bảng có chip trạng thái, số căn phải, trạng thái trống; bỏ emoji
 - Hộp thoại xác nhận/nhập liệu và toast riêng (`DialogProvider` trong `ui.jsx`) thay `window.confirm/prompt`; khoá tài khoản nay có xác nhận; mọi form (câu hỏi, đề thi, tài liệu, nhóm, tài khoản, nhập Excel, sinh AI) chia nhóm trường và có nhãn
+- Admin: ở "Đề thi & nhóm" → Kết quả, mỗi nhân viên có nút "Xem bài làm" (câu đúng/sai, đáp án đã chọn, số lần rời màn hình)
 - Không đổi logic, API, server. Đã chụp thử 1440px và 390px (API giả), không tràn ngang; build sạch; `npm test -w server` 21/22 pass (1 test bỏ qua, cần DB)
 
 ## Đang dở

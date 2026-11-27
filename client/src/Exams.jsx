@@ -102,12 +102,13 @@ function TakeExam({ session, onFinish }) {
 }
 
 // ---------- Kết quả chi tiết ----------
-function Review({ data, onBack }) {
+function Review({ data, onBack, who, backLabel = 'Quay lại danh sách' }) {
   const { attempt: a, exam, items } = data;
   return <div className="stack">
     <div className="panel panel-body">
-      <button className="btn btn-ghost btn-sm" style={{ justifySelf: 'start' }} onClick={onBack}><ArrowLeft />Quay lại danh sách</button>
+      <button className="btn btn-ghost btn-sm" style={{ justifySelf: 'start' }} onClick={onBack}><ArrowLeft />{backLabel}</button>
       <h2>{exam.title}</h2>
+      {who && <p className="muted" style={{ fontSize: 'var(--fs-md)' }}>Bài làm của <b>{who.fullName}</b> ({who.username}){who.focusLosses > 0 ? <> · Rời khỏi màn hình làm bài <b>{who.focusLosses}</b> lần</> : ' · Không rời màn hình làm bài'}</p>}
       <div className="score">
         <b>{a.percent}%</b>
         <span className={a.passed ? 'chip chip-success' : 'chip chip-danger'}>{a.passed ? 'Đạt' : 'Chưa đạt'}</span>
@@ -124,7 +125,7 @@ function Review({ data, onBack }) {
             const cls = o.isCorrect ? 'correct' : picked ? 'wrong' : 'plain';
             return <div key={o.id} className={`review-opt ${cls}`}>
               {o.isCorrect ? <Check /> : picked ? <X /> : <Minus />}
-              <span>{o.text}{picked && <em> (bạn chọn)</em>}{o.isCorrect && !picked && <em> (đáp án đúng)</em>}</span>
+              <span>{o.text}{picked && <em> ({who ? 'đã chọn' : 'bạn chọn'})</em>}{o.isCorrect && !picked && <em> (đáp án đúng)</em>}</span>
             </div>;
           })}
         </div>
@@ -263,6 +264,7 @@ export function ExamAdmin() {
   const [creating, setCreating] = useState(false);
   const [results, setResults] = useState(null);
   const [room, setRoom] = useState(null);
+  const [detail, setDetail] = useState(null);
   const [error, setError] = useState('');
   const load = () => api('/exams/manage').then(d => setExams(d.exams)).catch(e => setError(e.message));
   useEffect(() => { load(); }, []);
@@ -275,6 +277,12 @@ export function ExamAdmin() {
     try { setResults({ exam: e, rows: (await api(`/exams/${e.id}/results`)).results }); } catch (err) { setError(err.message); }
   }
 
+  async function showAttempt(r) {
+    setError('');
+    try { setDetail({ who: r, data: await api(`/exams/attempts/${r.id}/review`) }); } catch (err) { setError(err.message); }
+  }
+
+  if (detail) return <Review data={detail.data} who={detail.who} backLabel="Quay lại kết quả" onBack={() => setDetail(null)} />;
   if (room) return <LiveMonitor exam={room} onBack={() => { setRoom(null); load(); }} />;
   return <div className="panel panel-body">
     <h2>Quản lý đề thi</h2>
@@ -301,15 +309,16 @@ export function ExamAdmin() {
     {results && <>
       <h3>Kết quả: {results.exam.title} <a className="btn btn-link" href={`/api/exams/${results.exam.id}/results.csv`}>Tải CSV</a> <button className="btn btn-link" onClick={() => setResults(null)}>Ẩn</button></h3>
       <div className="table-wrap"><table>
-        <thead><tr><th>Nhân viên</th><th className="num">Số lần thi</th><th>Điểm cao nhất</th><th>Kết quả</th><th>Trạng thái</th><th className="num">Rời tab</th></tr></thead>
+        <thead><tr><th>Nhân viên</th><th className="num">Số lần thi</th><th>Điểm cao nhất</th><th>Kết quả</th><th>Trạng thái</th><th className="num">Rời tab</th><th></th></tr></thead>
         <tbody>{results.rows.map(r => <tr key={r.id}>
           <td>{r.fullName} <span className="sub">{r.username}</span></td><td className="num">{r.attemptCount}</td>
           <td>{r.submittedAt ? `${r.correct}/${r.total} (${r.percent}%)` : '—'}</td>
           <td>{r.submittedAt ? <Chip tone={r.passed ? 'success' : 'danger'}>{r.passed ? 'Đạt' : 'Chưa đạt'}</Chip> : '—'}</td>
           <td>{r.submittedAt ? (r.late ? <Chip tone="warning">Nộp trễ</Chip> : <Chip tone="neutral">Đã nộp</Chip>) : <Chip tone="info">Đang làm</Chip>}</td>
-          <td className="num">{r.focusLosses || ''}</td>
+          <td className="num">{r.submittedAt || r.focusLosses ? (r.focusLosses ?? 0) : ''}</td>
+          <td className="actions">{r.submittedAt && <button className="btn btn-secondary btn-sm" onClick={() => showAttempt(r)}>Xem bài làm</button>}</td>
         </tr>)}
-        {results.rows.length === 0 && <tr><td colSpan={6} className="empty">Chưa có ai làm bài.</td></tr>}</tbody>
+        {results.rows.length === 0 && <tr><td colSpan={7} className="empty">Chưa có ai làm bài.</td></tr>}</tbody>
       </table></div>
     </>}
   </div>;
