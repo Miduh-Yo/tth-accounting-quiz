@@ -36,11 +36,11 @@ export default function UserAdmin({ me }) {
   }
 
   const [editId, setEditId] = useState(null);
-  const [edit, setEdit] = useState({ fullName: '', email: '', role: 'EMPLOYEE' });
-  const startEdit = u => { setEditId(u.id); setEdit({ fullName: u.fullName, email: u.email || '', role: u.role }); };
+  const [edit, setEdit] = useState({ username: '', fullName: '', email: '', role: 'EMPLOYEE' });
+  const startEdit = u => { setEditId(u.id); setEdit({ username: u.username, fullName: u.fullName, email: u.email || '', role: u.role }); };
   async function saveEdit(u) {
     setError('');
-    const body = { fullName: edit.fullName, email: edit.email };
+    const body = { username: edit.username, fullName: edit.fullName, email: edit.email };
     if (edit.role !== u.role) body.role = edit.role;
     try { await api(`/users/${u.id}`, { method: 'PATCH', body }); setEditId(null); await load(); }
     catch (e) { setError(e.message); }
@@ -70,7 +70,7 @@ export default function UserAdmin({ me }) {
         <thead><tr><th>Tài khoản</th><th>Họ tên</th><th>Email</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead>
         <tbody>
           {users.map(u => editId === u.id ? <tr key={u.id}>
-            <td>{u.username}</td>
+            <td><input value={edit.username} onChange={setE('username')} placeholder="Mã tài khoản" required /></td>
             <td><input value={edit.fullName} onChange={setE('fullName')} placeholder="Họ và tên" required /></td>
             <td><input type="email" value={edit.email} onChange={setE('email')} placeholder="Email" /></td>
             <td><select value={edit.role} onChange={setE('role')}>
