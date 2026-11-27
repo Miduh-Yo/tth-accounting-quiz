@@ -20,6 +20,7 @@ import { attachRealtime } from './realtime.js';
 import { groupsRouter } from './routes/groups.js';
 import { reportsRouter } from './routes/reports.js';
 import { documentsRouter } from './routes/documents.js';
+import { ssoRouter } from './routes/sso.js';
 
 const app = express();
 const httpServer = createServer(app);
@@ -43,6 +44,7 @@ app.use('/api/audit', auditRouter);
 app.use('/api/groups', groupsRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/documents', documentsRouter);
+app.use('/sso', ssoRouter); // đăng nhập một lần từ Cổng phần mềm (TTH_CONG_URL)
 
 // Production: phục vụ giao diện đã build cùng origin với API (cookie phiên hoạt động không cần CORS).
 const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../client/dist');
