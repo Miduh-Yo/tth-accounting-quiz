@@ -28,7 +28,7 @@ function client() {
   return {
     cookie: () => cookie,
     get: (p, raw) => call('GET', p, undefined, raw), post: (p, b) => call('POST', p, b ?? {}),
-    patch: (p, b) => call('PATCH', p, b), del: p => call('DELETE', p)
+    patch: (p, b) => call('PATCH', p, b), put: (p, b) => call('PUT', p, b), del: p => call('DELETE', p)
   };
 }
 
@@ -332,5 +332,156 @@ test('luồng đầy đủ: RBAC, câu hỏi, nhập CSV, nhóm, giao đề, là
     const users = (await admin.get('/users')).body.users;
     assert.equal((await admin.patch(`/users/${users.find(u => u.username === 'nv1').id}`, { status: 'LOCKED' })).status, 200);
     assert.equal((await e1.get('/exams')).status, 401);
+  });
+});
+
+test('luyện mỗi ngày: đề tự tạo, chấm từng câu, huy hiệu, xếp hạng, điểm danh, quản trị', { skip: !DB }, async t => {
+  // Chỉ dùng câu hỏi do test này tạo: lưu trữ mọi câu cũ và xoá dữ liệu daily của lần chạy trước.
+  await prisma.question.updateMany({ data: { status: 'ARCHIVED' } });
+  await prisma.$executeRawUnsafe('TRUNCATE "DailyDeck","Holiday","DailySetting","UserProgress","UserBadge" RESTART IDENTITY CASCADE');
+  const admin = client(), d1 = client(), d2 = client(), anon = client();
+  assert.equal((await admin.post('/auth/login', { username: 'adm', password: PW })).status, 200);
+  for (const u of ['day1', 'day2']) assert.equal((await admin.post('/users', { username: u, fullName: `Người ${u}`, role: 'EMPLOYEE', password: PW })).status, 201);
+  assert.equal((await d1.post('/auth/login', { username: 'day1', password: PW })).status, 200);
+  assert.equal((await d2.post('/auth/login', { username: 'day2', password: PW })).status, 200);
+
+  await t.test('phân quyền: cần đăng nhập; khu quản trị chỉ cho ADMIN', async () => {
+    assert.equal((await anon.get('/daily/today')).status, 401);
+    for (const p of ['/daily/settings', '/daily/stats', '/daily/attendance', '/daily/holidays']) assert.equal((await d1.get(p)).status, 403, p);
+    assert.equal((await d1.post('/daily/pin', { date: '2999-01-01', questionIds: [] })).status, 403);
+    assert.equal((await d1.get('/daily/attendance.csv', true)).status, 403);
+  });
+
+  await t.test('chưa có câu hỏi "Đang dùng" thì báo rõ, không tạo đề rỗng', async () => {
+    assert.equal((await d1.post('/daily/start')).status, 503);
+    const today = await d1.get('/daily/today');
+    assert.equal(today.status, 200);
+    assert.equal(today.body.deck, null);
+  });
+
+  const qids = [];
+  await t.test('cài đặt: kiểm tra giá trị; tạo 6 câu hỏi', async () => {
+    assert.equal((await admin.put('/daily/settings', { questionsPerDeck: 3 })).status, 400);
+    assert.equal((await admin.put('/daily/settings', { questionsPerDeck: 10 })).status, 200);
+    for (let i = 1; i <= 6; i++) {
+      const r = await admin.post('/questions', q({ content: `Câu daily ${i}` }));
+      assert.equal(r.status, 201);
+      qids.push(r.body.question.id);
+    }
+  });
+
+  let s1;
+  await t.test('đề hôm nay tự tạo, chung cho mọi người, không lộ đáp án đúng', async () => {
+    const today = await d1.get('/daily/today');
+    assert.equal(today.body.deck.questionCount, 6); // mặc định 10 câu, kho chỉ có 6 nên dùng hết
+    assert.equal(today.body.session, null);
+    assert.equal(today.body.progress.streak, 0);
+    s1 = await d1.post('/daily/start');
+    assert.equal(s1.status, 200);
+    assert.equal(s1.body.questions.length, 6);
+    assert.doesNotMatch(JSON.stringify(s1.body.questions), /isCorrect|correctIds|explanation/);
+    const s2 = await d2.post('/daily/start');
+    assert.deepEqual(s2.body.questions.map(x => x.id), s1.body.questions.map(x => x.id)); // cùng đề, cùng thứ tự
+    assert.equal((await d1.post('/daily/start')).body.sessionId, s1.body.sessionId); // mở lại = tiếp tục
+  });
+
+  const optionId = (x, text) => x.options.find(o => o.text === text).id;
+
+  await t.test('chấm từng câu: đúng/sai, combo, XP; không trả lời lại; chặn câu ngoài đề và phiên người khác', async () => {
+    const qs = s1.body.questions, url = `/daily/sessions/${s1.body.sessionId}/answer`;
+    assert.equal((await d1.post(url, { questionId: qs[0].id, selectedIds: [] })).status, 400);
+    const first = await d1.post(url, { questionId: qs[0].id, selectedIds: [optionId(qs[0], 'B')] });
+    assert.deepEqual([first.body.isCorrect, first.body.xp, first.body.combo, first.body.correctIds], [false, 0, 0, [optionId(qs[0], 'A')]]);
+    assert.equal((await d1.post(url, { questionId: qs[0].id, selectedIds: [optionId(qs[0], 'A')] })).status, 409);
+    assert.equal((await d2.post(url, { questionId: qs[1].id, selectedIds: [optionId(qs[1], 'A')] })).status, 404);
+    assert.equal((await d1.post(url, { questionId: 'khong-ton-tai', selectedIds: ['x'] })).status, 400);
+    const xps = [];
+    let last;
+    for (const x of qs.slice(1)) { last = await d1.post(url, { questionId: x.id, selectedIds: [optionId(x, 'A')] }); xps.push(last.body.xp); }
+    assert.deepEqual(xps, [10, 12, 14, 16, 18]); // combo tăng dần
+    assert.equal(last.body.finished, true);
+    const sum = last.body.summary;
+    assert.deepEqual([sum.correct, sum.total, sum.bonusXp, sum.xpEarned, sum.perfect, sum.streak.current], [5, 6, 20, 70 + 20, false, 1]);
+    assert.ok(sum.newBadges.some(b => b.code === 'FIRST_DAILY'));
+    assert.ok(sum.newBadges.some(b => b.code === 'COMBO_5'));
+    assert.equal((await d1.post(url, { questionId: qs[0].id, selectedIds: [optionId(qs[0], 'A')] })).status, 409); // đã hoàn thành
+  });
+
+  await t.test('mở lại phiên đã xong: có đáp án và tóm tắt; trang Hôm nay cập nhật chuỗi, XP', async () => {
+    const again = await d1.post('/daily/start');
+    assert.equal(again.body.finished, true);
+    assert.equal(Object.keys(again.body.answers).length, 6);
+    assert.equal(again.body.summary.xpEarned, 90);
+    const today = (await d1.get('/daily/today')).body;
+    assert.equal(today.progress.xp, 90);
+    assert.equal(today.progress.streak, 1);
+    assert.equal(today.progress.playedToday, true);
+    assert.equal(today.week.find(d => d.today).status, 'done');
+    assert.ok(today.badges.earned.some(b => b.code === 'FIRST_DAILY'));
+  });
+
+  await t.test('bảng xếp hạng: người điểm cao đứng trước; tắt thì nhân viên không thấy, admin vẫn thấy', async () => {
+    const s2 = (await d2.post('/daily/start')).body;
+    let last;
+    for (const x of s2.questions) last = await d2.post(`/daily/sessions/${s2.sessionId}/answer`, { questionId: x.id, selectedIds: [optionId(x, 'A')] });
+    assert.equal(last.body.summary.perfect, true);
+    assert.equal(last.body.summary.xpEarned, 10 + 12 + 14 + 16 + 18 + 20 + 20 + 30); // 6 câu đúng + hoàn thành + tuyệt đối
+    assert.ok(last.body.summary.newBadges.some(b => b.code === 'PERFECT'));
+    const lb = (await d1.get('/daily/leaderboard?scope=week')).body;
+    assert.equal(lb.enabled, true);
+    assert.deepEqual(lb.rows.map(r => r.fullName), ['Người day2', 'Người day1']);
+    assert.equal(lb.rows.find(r => r.me).fullName, 'Người day1');
+    assert.ok(!('userId' in lb.rows[0]));
+    assert.equal((await d1.get('/daily/leaderboard?scope=month')).body.rows.length, 2);
+    assert.equal((await admin.put('/daily/settings', { leaderboardEnabled: false })).status, 200);
+    assert.deepEqual((await d1.get('/daily/leaderboard')).body, { enabled: false, rows: [] });
+    assert.equal((await admin.get('/daily/leaderboard')).body.rows.length, 2);
+    assert.equal((await admin.put('/daily/settings', { leaderboardEnabled: true })).status, 200);
+  });
+
+  await t.test('lịch cá nhân và bảng điểm danh ✓/✗ (CSV an toàn, có BOM)', async () => {
+    const cal = (await d1.get('/daily/calendar')).body;
+    assert.equal(cal.doneCount, 1);
+    assert.equal(cal.missedCount, 0); // tài khoản mới tạo hôm nay nên các ngày trước là "off"
+    assert.equal((await d1.get('/daily/calendar?month=abc')).status, 200);
+    const att = (await admin.get('/daily/attendance')).body;
+    const row = att.rows.find(r => r.username === 'day1');
+    assert.equal(row.doneCount, 1);
+    assert.equal(row.days.length, att.dates.length);
+    assert.ok(!att.rows.some(r => r.username === 'adm')); // chỉ tính nhân viên
+    assert.ok(!att.rows.some(r => r.username === 'nv1')); // tài khoản đã khoá không tính
+    const csv = await admin.get('/daily/attendance.csv', true);
+    assert.equal(csv.status, 200);
+    assert.equal(csv.bom, true);
+    assert.match(csv.text, /✓/);
+  });
+
+  await t.test('thống kê: ai đã/chưa chơi hôm nay, kho còn đủ cho mấy ngày', async () => {
+    const st = (await admin.get('/daily/stats')).body;
+    assert.equal(st.poolCount, 6);
+    assert.equal(st.deckCreated, true);
+    assert.equal(st.playedToday, 2);
+    const names = st.notPlayed.map(u => u.username);
+    assert.ok(names.includes('nv2') && !names.includes('day1') && !names.includes('day2'));
+    assert.equal(st.employeeCount, st.playedToday + names.length);
+    assert.equal(st.lowStock, true);
+  });
+
+  await t.test('ngày lễ: kiểm tra định dạng, thêm, liệt kê, xoá', async () => {
+    assert.equal((await admin.post('/daily/holidays', { date: '2026-13-99x' })).status, 400);
+    assert.equal((await admin.post('/daily/holidays', { date: '2026-09-02', note: 'Quốc khánh' })).status, 201);
+    assert.deepEqual((await admin.get('/daily/holidays')).body.holidays, [{ date: '2026-09-02', note: 'Quốc khánh' }]);
+    assert.equal((await admin.del('/daily/holidays/2026-09-02')).status, 200);
+    assert.equal((await admin.get('/daily/holidays')).body.holidays.length, 0);
+  });
+
+  await t.test('ghim đề: từ chối ngày quá khứ, câu lạ, quá ít câu, ngày đã có người làm', async () => {
+    const five = qids.slice(0, 5);
+    assert.equal((await admin.post('/daily/pin', { date: '2020-01-01', questionIds: five })).status, 400);
+    assert.equal((await admin.post('/daily/pin', { date: '2999-01-01', questionIds: [...five.slice(0, 4), 'khong-ton-tai'] })).status, 400);
+    assert.equal((await admin.post('/daily/pin', { date: '2999-01-01', questionIds: five.slice(0, 3) })).status, 400);
+    const ok = await admin.post('/daily/pin', { date: '2999-01-01', questionIds: five });
+    assert.deepEqual([ok.status, ok.body.deck.questionCount, ok.body.deck.pinned], [201, 5, true]);
+    assert.equal((await admin.post('/daily/pin', { date: (await d1.get('/daily/today')).body.date, questionIds: five })).status, 409);
   });
 });

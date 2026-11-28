@@ -38,6 +38,9 @@ model User {
   documents          Document[]
   attempts           Attempt[]
   groupMemberships   GroupMember[]
+  dailySessions      DailySession[]
+  progress           UserProgress?
+  badges             UserBadge[]
 }
 
 model AuditLog {
@@ -216,4 +219,76 @@ model Document {
   updatedAt     DateTime       @updatedAt
 
   @@index([status])
+}
+
+// ---------- Luyện mỗi ngày ----------
+// Ngày lưu dạng chuỗi "YYYY-MM-DD" theo giờ Việt Nam để tránh lệch múi giờ.
+model DailyDeck {
+  id          String         @id @default(cuid())
+  date        String         @unique
+  questionIds String[]
+  pinned      Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  sessions    DailySession[]
+}
+
+model DailySession {
+  id         String        @id @default(cuid())
+  deck       DailyDeck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  deckId     String
+  user       User          @relation(fields: [userId], references: [id])
+  userId     String
+  startedAt  DateTime      @default(now())
+  finishedAt DateTime?
+  total      Int
+  correct    Int           @default(0)
+  xpEarned   Int           @default(0)
+  bestCombo  Int           @default(0)
+  answers    DailyAnswer[]
+
+  @@unique([deckId, userId])
+  @@index([userId])
+}
+
+model DailyAnswer {
+  session     DailySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId   String
+  questionId  String
+  position    Int
+  selectedIds String[]
+  isCorrect   Boolean
+  xp          Int          @default(0)
+  answeredAt  DateTime     @default(now())
+
+  @@id([sessionId, questionId])
+}
+
+model UserProgress {
+  user             User    @relation(fields: [userId], references: [id])
+  userId           String  @id
+  xp               Int     @default(0)
+  currentStreak    Int     @default(0)
+  longestStreak    Int     @default(0)
+  lastCreditedDate String?
+}
+
+model UserBadge {
+  user     User     @relation(fields: [userId], references: [id])
+  userId   String
+  code     String
+  earnedAt DateTime @default(now())
+
+  @@id([userId, code])
+}
+
+model Holiday {
+  date String  @id
+  note String?
+}
+
+model DailySetting {
+  id                 Int     @id @default(1)
+  questionsPerDeck   Int     @default(10)
+  repeatGapDays      Int     @default(30)
+  leaderboardEnabled Boolean @default(true)
 }
