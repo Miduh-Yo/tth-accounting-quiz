@@ -11,7 +11,7 @@
 - Ngân hàng câu hỏi, đề thi, nhóm & giao đề, chấm điểm tự động
 - Phòng thi trực tiếp (Socket.io), cảnh báo rời tab
 - Thư viện tài liệu & quy định, nhập câu hỏi từ Excel/CSV
-- Sinh câu hỏi bằng AI (cần `ANTHROPIC_API_KEY` đặt trong Render Dashboard)
+- Sinh câu hỏi bằng AI từ văn bản/.docx/.pdf (cần `ANTHROPIC_API_KEY` đặt trong Render Dashboard hoặc `server/.env`)
 - Báo cáo kết quả, báo cáo tổng hợp theo chủ đề, nhật ký hoạt động
 - Commit gần nhất trên `main`: script đệm số 0 cho tên đăng nhập dạng số (2026-11-27)
 

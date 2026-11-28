@@ -69,3 +69,14 @@ test('extractText: txt/md, docx, từ chối file sai', async () => {
   await assert.rejects(extractText({ filename: 'a.exe', base64: b64 }), e => e.status === 400);
   await assert.rejects(extractText({ filename: 'a.docx', base64: Buffer.from('không phải zip').toString('base64') }), /không hợp lệ/);
 });
+
+test('generateQuestions: PDF được gửi dưới dạng khối document, không qua thẻ văn bản', async () => {
+  const c = fakeClient(textRes({ questions: [goodQ] }));
+  const out = await generateQuestions({ pdf: 'JVBERi0xLjQ=', count: 2, topic: 'Thuế', client: c });
+  assert.equal(out.length, 1);
+  const blocks = fakeClient.last.messages[0].content;
+  assert.equal(blocks[0].type, 'document');
+  assert.equal(blocks[0].source.media_type, 'application/pdf');
+  assert.equal(blocks[0].source.data, 'JVBERi0xLjQ=');
+  assert.match(blocks[1].text, /Soạn 2 câu hỏi/);
+});

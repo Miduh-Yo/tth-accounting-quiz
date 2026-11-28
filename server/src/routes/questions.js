@@ -4,7 +4,7 @@ import { prisma } from '../db.js';
 import rateLimit from 'express-rate-limit';
 import { audit } from '../audit.js';
 import { GeneratorError, MAX_GENERATE, aiConfigured, generateQuestions } from '../generator.js';
-import { extractText } from '../extractText.js';
+import { MAX_FILE_BYTES, extractText } from '../extractText.js';
 import { buildTemplate, parseXlsx } from '../xlsxImport.js';
 import { MAX_IMPORT_ROWS, findDocument, parseImport, rowToQuestion } from '../importQuestions.js';
 import { requireAuth, requireRole } from '../auth.js';
@@ -99,10 +99,18 @@ questionsRouter.post('/generate', generateLimiter, async (req, res, next) => {
     if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
     const d = parsed.data;
     if (await docMissing(d.documentId)) return res.status(400).json({ error: 'Tài liệu không tồn tại' });
-    const text = await extractText({ filename: d.filename, text: d.text, base64: d.base64 });
-    if (text.length < 200) return res.status(400).json({ error: 'Nội dung quá ngắn để sinh câu hỏi (tối thiểu ~200 ký tự).' });
+    let text = '', pdf;
+    if (d.base64 != null && String(d.filename ?? '').toLowerCase().endsWith('.pdf')) {
+      const buf = Buffer.from(d.base64, 'base64');
+      if (buf.length > MAX_FILE_BYTES) return res.status(400).json({ error: 'File quá lớn (tối đa 4MB)' });
+      if (buf.length < 8 || buf.subarray(0, 5).toString('latin1') !== '%PDF-') return res.status(400).json({ error: 'File PDF không hợp lệ' });
+      pdf = d.base64;
+    } else {
+      text = await extractText({ filename: d.filename, text: d.text, base64: d.base64 });
+      if (text.length < 200) return res.status(400).json({ error: 'Nội dung quá ngắn để sinh câu hỏi (tối thiểu ~200 ký tự).' });
+    }
 
-    const raw = await generateQuestions({ text, count: d.count, topic: d.topic, difficulty: d.difficulty });
+    const raw = await generateQuestions({ text, pdf, count: d.count, topic: d.topic, difficulty: d.difficulty });
     const { valid, skipped } = shapeGenerated(raw, d);
     if (valid.length) {
       await prisma.$transaction(valid.map(({ options, ...data }) => prisma.question.create({

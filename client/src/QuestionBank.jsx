@@ -188,11 +188,11 @@ function GeneratePanel({ topics, onDone, onCancel }) {
     const ext = picked.name.toLowerCase().split('.').pop();
     if (picked.size > 4 * 1024 * 1024) return setError('File quá lớn (tối đa 4MB).');
     if (ext === 'txt' || ext === 'md') setFile({ filename: picked.name, text: await picked.text() });
-    else if (ext === 'docx') {
+    else if (ext === 'docx' || ext === 'pdf') {
       const bytes = new Uint8Array(await picked.arrayBuffer());
       let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
       setFile({ filename: picked.name, base64: btoa(bin) });
-    } else setError('Chỉ hỗ trợ .txt, .md, .docx. Với NotebookLM: xuất/sao chép ghi chú ra văn bản rồi dán hoặc lưu thành .txt/.md.');
+    } else setError('Chỉ hỗ trợ .txt, .md, .docx, .pdf. Với NotebookLM: xuất/sao chép ghi chú ra văn bản rồi dán hoặc lưu thành .txt/.md.');
   }
   async function run(event) {
     event.preventDefault(); setError(''); setBusy(true);
@@ -222,8 +222,8 @@ function GeneratePanel({ topics, onDone, onCancel }) {
       </label>
     </div>
     <p className="section-title">Văn bản nguồn <span className="muted">— tối đa khoảng 60.000 ký tự</span></p>
-    <label className="field">Tải file (.txt, .md, .docx; tối đa 4MB)
-      <input type="file" accept=".txt,.md,.docx" onChange={pick} />
+    <label className="field">Tải file (.txt, .md, .docx, .pdf; tối đa 4MB)
+      <input type="file" accept=".txt,.md,.docx,.pdf" onChange={pick} />
     </label>
     {file ? <p className="muted">Đã chọn file: <b>{file.filename}</b></p>
       : <label className="field">Hoặc dán nội dung ghi chú
