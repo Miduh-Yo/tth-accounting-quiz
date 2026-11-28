@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react';
-import { AlertCircle, BarChart3, BookOpen, ClipboardCheck, Eye, EyeOff, FileText, KeyRound, ListChecks, LogOut, Menu, ScrollText, Sparkles, Users } from 'lucide-react';
+import { AlertCircle, BarChart3, BookOpen, CalendarCheck, ClipboardCheck, Eye, EyeOff, FileText, KeyRound, ListChecks, LogOut, Menu, ScrollText, Sparkles, Users } from 'lucide-react';
 import logo from './assets/tth-logo.jpg';
 import { api } from './api.js';
 import UserAdmin from './UserAdmin.jsx';
@@ -10,6 +10,7 @@ import GroupAdmin from './Groups.jsx';
 import Reports from './Reports.jsx';
 import Documents from './Documents.jsx';
 import Daily from './daily/Daily.jsx';
+import DailyAdmin from './daily/DailyAdmin.jsx';
 
 const ROLE_LABEL = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Quản trị viên', EMPLOYEE: 'Nhân viên' };
 
@@ -98,6 +99,7 @@ const NAV = [
   { group: 'Quản trị', admin: true, items: [
     { id: 'questions', label: 'Câu hỏi', icon: ListChecks, title: 'Ngân hàng câu hỏi', desc: 'Soạn, nhập và duyệt câu hỏi.' },
     { id: 'manage', label: 'Đề thi & nhóm', icon: FileText, title: 'Đề thi & nhóm', desc: 'Tạo đề, giao đề và quản lý nhóm nhân viên.' },
+    { id: 'dailyadmin', label: 'Luyện hàng ngày', icon: CalendarCheck, title: 'Luyện hàng ngày', desc: 'Tham gia, điểm danh, kho câu hỏi, ngày nghỉ và cài đặt.' },
     { id: 'reports', label: 'Báo cáo', icon: BarChart3, title: 'Báo cáo tổng hợp', desc: 'Tỷ lệ đúng theo chủ đề và theo nhân viên.' },
     { id: 'users', label: 'Tài khoản', icon: Users, title: 'Quản lý tài khoản', desc: 'Tạo, khoá và đặt lại mật khẩu người dùng.' },
     { id: 'audit', label: 'Nhật ký', icon: ScrollText, title: 'Nhật ký hoạt động', desc: 'Lịch sử thao tác trên hệ thống.', superOnly: true }] }
@@ -109,7 +111,7 @@ function Shell({ user, onChangePassword, onLogout }) {
   const all = groups.flatMap(g => g.items);
   const views = {
     daily: <Daily user={user} />, exams: <MyExams />, docs: <Documents isAdmin={isAdmin} />, questions: <QuestionBank />,
-    manage: <div className="stack"><ExamAdmin /><GroupAdmin /></div>, reports: <Reports />, users: <UserAdmin me={user} />, audit: <AuditLog />
+    manage: <div className="stack"><ExamAdmin /><GroupAdmin /></div>, dailyadmin: <DailyAdmin />, reports: <Reports />, users: <UserAdmin me={user} />, audit: <AuditLog />
   };
   // Tab hiện tại nằm trên URL (#exams…) nên tải lại vẫn giữ.
   const fromHash = () => { const h = window.location.hash.slice(1); return all.some(t => t.id === h) ? h : 'daily'; };

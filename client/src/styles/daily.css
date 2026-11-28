@@ -1,9 +1,11 @@
 /* "Luyện mỗi ngày": lớp giao diện vui nhộn, chỉ áp cho vùng .daily; phần còn lại của ứng dụng giữ nguyên phong cách gọn, nghiêm túc. */
-.daily {
+:root {
   --sun: #ffb800; --sun-bg: #fff6d6; --sun-fg: #8a5a00;
   --flame: #ff7a1a; --flame-bg: #ffeedd; --flame-fg: #a34700;
   --good: #1fa463; --good-edge: #15804b; --good-bg: #e3f7ec; --good-fg: #0f6b3f;
   --bad: #e5484d; --bad-edge: #b9343a; --bad-bg: #fdecec; --bad-fg: #a4261b;
+}
+.daily {
   --edge: var(--primary-800);
   display: grid; gap: var(--sp-6); font-size: var(--fs-md);
 }
@@ -196,3 +198,21 @@
   .q-title { font-size: 17px; }
   .feedback { padding: var(--sp-4); }
 }
+
+/* ---------- Quản trị: Luyện hàng ngày ---------- */
+.seg-wide { justify-self: start; }
+.admin-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--sp-4); }
+.admin-cards .panel-body { gap: var(--sp-2); align-content: start; }
+.big-num { font-size: 26px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.name-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.name-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 12px; border-radius: 999px; background: var(--gray-50); border: 1px solid var(--border); font-size: var(--fs-sm); font-weight: 500; }
+.name-chip small { color: var(--text-muted); font-size: var(--fs-xs); font-weight: 400; }
+table.att { width: max-content; min-width: 100%; }
+table.att th, table.att td { padding: 6px 4px; text-align: center; }
+table.att .att-name { position: sticky; left: 0; z-index: 2; background: var(--surface); text-align: left; min-width: 170px; padding-left: var(--sp-4); box-shadow: 1px 0 0 var(--border-soft); }
+table.att thead .att-name { background: var(--gray-25); }
+table.att .att-day { min-width: 30px; padding: 0 2px; }
+table.att .off { background: var(--gray-25); }
+table.att .num { padding: 6px var(--sp-3); white-space: nowrap; }
+table.att .mark { width: 22px; height: 22px; margin: 0 auto; border-width: 1.5px; }
+table.att .mark svg { width: 12px; height: 12px; }

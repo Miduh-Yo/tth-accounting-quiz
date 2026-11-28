@@ -4,7 +4,7 @@
 > Quy ước nhánh: `main` = bản Render đang chạy thật (tự triển khai khi push). Việc mới làm trên `dev`, kiểm tra xong mới gộp vào `main`.
 > Không ghi mật khẩu, khóa API, dữ liệu thật vào file này.
 
-**Cập nhật lần cuối:** 2026-11-28 (giao diện người chơi "Luyện mỗi ngày" trên nhánh dev) · **Phiên bản phần mềm:** 0.11 (theo README)
+**Cập nhật lần cuối:** 2026-11-28 (giao diện quản trị "Luyện mỗi ngày" trên nhánh dev) · **Phiên bản phần mềm:** 0.11 (theo README)
 
 ## Đã xong (theo README 0.11)
 - Đăng nhập JWT, phân quyền SUPER_ADMIN / ADMIN / EMPLOYEE ở máy chủ
@@ -38,11 +38,12 @@
 
 - **Giao diện người chơi xong** (`client/src/daily/`, `client/src/styles/daily.css`, thêm mục "Hôm nay" vào sidebar, là trang mặc định): màn Hôm nay (chuỗi ngày, XP/cấp, tuần ✓/✗, xếp hạng tuần/tháng, huy hiệu, lịch tháng), màn chơi từng câu (chấm ngay, pháo hoa `canvas-confetti`, rung khi sai, combo, giải thích + căn cứ, đồng hồ gợi ý 10 phút không phạt, âm thanh tuỳ chọn mặc định tắt), màn kết quả (điểm, XP, huy hiệu mới, câu cần xem lại). Có linh vật "Sổ Cái" (SVG). Tôn trọng `prefers-reduced-motion`.
 - Đã chạy thử với PostgreSQL tạm + server thật: đăng nhập nhân viên, làm bài đúng/sai, tiếp tục bài dở, xem kết quả, quay lại trang chủ; kiểm tra khung điện thoại 375px. Tìm và sửa 1 lỗi: tải lại phiên (409) trước đây không dựng lại màn chơi.
-- Chưa làm: giao diện quản trị daily (cài đặt, ngày lễ, bảng điểm danh + CSV, kho còn đủ cho N ngày, ghim đề); nhắc làm bài kiểm tra được giao trên màn Hôm nay.
+- **Giao diện quản trị xong** (`client/src/daily/DailyAdmin.jsx`, mục "Luyện hàng ngày" trong menu Quản trị): Tổng quan (hôm nay đã/chưa luyện, kho còn đủ cho N ngày + cảnh báo sắp cạn, trạng thái đề hôm nay), Điểm danh (bảng ✓/✗ theo tháng và nhóm, tỷ lệ chỉ tính ngày làm việc, tải CSV), Cài đặt (số câu mỗi đề, khoảng không lặp, bật/tắt xếp hạng, ngày lễ, ghim đề riêng cho một ngày). Đã chạy thử với server và PostgreSQL tạm có lịch sử mẫu; sửa lỗi màu ✓/✗ không hiện ngoài vùng người chơi (biến màu chuyển lên `:root`).
+- Chưa làm: nhắc bài kiểm tra được giao trên màn Hôm nay; email/Zalo nhắc (cần dịch vụ gửi thư riêng).
 
 ## Bước tiếp theo (Luyện mỗi ngày)
-1. Giao diện quản trị: cài đặt, ngày lễ, bảng điểm danh + CSV, "kho còn đủ cho N ngày", ghim đề, danh sách "hôm nay chưa chơi".
-2. Duyệt giao diện trên máy với dữ liệu thật; sửa chi tiết rồi gộp `dev` vào `main`. Render sẽ tự chạy migration `0010_daily`.
+1. Duyệt toàn bộ trên máy với dữ liệu thật (cần `npm run db:migrate` để tạo bảng mới), sửa chi tiết rồi gộp `dev` vào `main`. Render sẽ tự chạy migration `0010_daily`.
+2. Bảo đảm kho có đủ câu "Đang dùng" (nên từ 150 câu trở lên); xem mục Tổng quan để biết "kho còn đủ cho N ngày".
 3. Chạy thử với nhóm nhỏ 1–2 tuần rồi mở cho toàn công ty.
 
 ## Đang dở
