@@ -4,7 +4,7 @@
 > Quy ước nhánh: `main` = bản Render đang chạy thật (tự triển khai khi push). Việc mới làm trên `dev`, kiểm tra xong mới gộp vào `main`.
 > Không ghi mật khẩu, khóa API, dữ liệu thật vào file này.
 
-**Cập nhật lần cuối:** 2026-11-28 (backend "Luyện mỗi ngày" trên nhánh dev) · **Phiên bản phần mềm:** 0.11 (theo README)
+**Cập nhật lần cuối:** 2026-11-28 (giao diện người chơi "Luyện mỗi ngày" trên nhánh dev) · **Phiên bản phần mềm:** 0.11 (theo README)
 
 ## Đã xong (theo README 0.11)
 - Đăng nhập JWT, phân quyền SUPER_ADMIN / ADMIN / EMPLOYEE ở máy chủ
@@ -36,10 +36,14 @@
 - Test: 68/68 qua (có 16 test đơn vị mới trong `test/daily.test.js` và 1 nhóm test tích hợp cuối `test/integration.test.js`, chạy trên PostgreSQL thật).
 - Bản làm lại giao diện của tôi (nhánh `phase1-backup`, font Nunito, nút 3D) bị trùng với bản có sẵn nên bỏ; sẽ dùng hệ thống thiết kế có sẵn và thêm lớp "vui nhộn" riêng (`daily.css`) chỉ cho màn Luyện mỗi ngày.
 
+- **Giao diện người chơi xong** (`client/src/daily/`, `client/src/styles/daily.css`, thêm mục "Hôm nay" vào sidebar, là trang mặc định): màn Hôm nay (chuỗi ngày, XP/cấp, tuần ✓/✗, xếp hạng tuần/tháng, huy hiệu, lịch tháng), màn chơi từng câu (chấm ngay, pháo hoa `canvas-confetti`, rung khi sai, combo, giải thích + căn cứ, đồng hồ gợi ý 10 phút không phạt, âm thanh tuỳ chọn mặc định tắt), màn kết quả (điểm, XP, huy hiệu mới, câu cần xem lại). Có linh vật "Sổ Cái" (SVG). Tôn trọng `prefers-reduced-motion`.
+- Đã chạy thử với PostgreSQL tạm + server thật: đăng nhập nhân viên, làm bài đúng/sai, tiếp tục bài dở, xem kết quả, quay lại trang chủ; kiểm tra khung điện thoại 375px. Tìm và sửa 1 lỗi: tải lại phiên (409) trước đây không dựng lại màn chơi.
+- Chưa làm: giao diện quản trị daily (cài đặt, ngày lễ, bảng điểm danh + CSV, kho còn đủ cho N ngày, ghim đề); nhắc làm bài kiểm tra được giao trên màn Hôm nay.
+
 ## Bước tiếp theo (Luyện mỗi ngày)
-1. Giao diện người chơi: màn "Hôm nay" (chuỗi, XP, lịch tuần), màn chơi từng câu + pháo hoa (`canvas-confetti`, tôn trọng reduced-motion), màn kết quả, bảng xếp hạng. Thêm mục "Hôm nay" vào sidebar.
-2. Giao diện quản trị: cài đặt, ngày lễ, bảng điểm danh + CSV, "kho còn đủ cho N ngày", ghim đề.
-3. Chạy thử với nhóm nhỏ 1–2 tuần rồi mở cho toàn công ty. Chạy `npm run db:deploy` (Render tự chạy khi deploy) để tạo bảng mới.
+1. Giao diện quản trị: cài đặt, ngày lễ, bảng điểm danh + CSV, "kho còn đủ cho N ngày", ghim đề, danh sách "hôm nay chưa chơi".
+2. Duyệt giao diện trên máy với dữ liệu thật; sửa chi tiết rồi gộp `dev` vào `main`. Render sẽ tự chạy migration `0010_daily`.
+3. Chạy thử với nhóm nhỏ 1–2 tuần rồi mở cho toàn công ty.
 
 ## Đang dở
 - Chưa chạy thử với dữ liệu và server thật (mới kiểm tra bằng API giả + ảnh chụp)

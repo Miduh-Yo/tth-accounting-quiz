@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState } from 'react';
-import { AlertCircle, BarChart3, BookOpen, ClipboardCheck, Eye, EyeOff, FileText, KeyRound, ListChecks, LogOut, Menu, ScrollText, Users } from 'lucide-react';
+import { AlertCircle, BarChart3, BookOpen, ClipboardCheck, Eye, EyeOff, FileText, KeyRound, ListChecks, LogOut, Menu, ScrollText, Sparkles, Users } from 'lucide-react';
 import logo from './assets/tth-logo.jpg';
 import { api } from './api.js';
 import UserAdmin from './UserAdmin.jsx';
@@ -9,6 +9,7 @@ import AuditLog from './AuditLog.jsx';
 import GroupAdmin from './Groups.jsx';
 import Reports from './Reports.jsx';
 import Documents from './Documents.jsx';
+import Daily from './daily/Daily.jsx';
 
 const ROLE_LABEL = { SUPER_ADMIN: 'Super Admin', ADMIN: 'Quản trị viên', EMPLOYEE: 'Nhân viên' };
 
@@ -91,6 +92,7 @@ function ChangePassword({ forced, onDone, onCancel }) {
 
 const NAV = [
   { group: 'Làm bài', items: [
+    { id: 'daily', label: 'Hôm nay', icon: Sparkles, title: 'Luyện mỗi ngày', desc: '10 phút kiến thức kế toán mỗi ngày: trả lời, xem đáp án ngay và tích lũy chuỗi ngày.' },
     { id: 'exams', label: 'Bài thi', icon: ClipboardCheck, title: 'Bài thi của tôi', desc: 'Các đề thi được giao và kết quả của bạn.' },
     { id: 'docs', label: 'Tài liệu', icon: BookOpen, title: 'Tài liệu & quy định', desc: 'Văn bản làm căn cứ cho câu hỏi.' }] },
   { group: 'Quản trị', admin: true, items: [
@@ -106,11 +108,11 @@ function Shell({ user, onChangePassword, onLogout }) {
   const groups = NAV.map(g => ({ ...g, items: g.items.filter(i => (!g.admin || isAdmin) && (!i.superOnly || user.role === 'SUPER_ADMIN')) })).filter(g => g.items.length);
   const all = groups.flatMap(g => g.items);
   const views = {
-    exams: <MyExams />, docs: <Documents isAdmin={isAdmin} />, questions: <QuestionBank />,
+    daily: <Daily user={user} />, exams: <MyExams />, docs: <Documents isAdmin={isAdmin} />, questions: <QuestionBank />,
     manage: <div className="stack"><ExamAdmin /><GroupAdmin /></div>, reports: <Reports />, users: <UserAdmin me={user} />, audit: <AuditLog />
   };
   // Tab hiện tại nằm trên URL (#exams…) nên tải lại vẫn giữ.
-  const fromHash = () => { const h = window.location.hash.slice(1); return all.some(t => t.id === h) ? h : 'exams'; };
+  const fromHash = () => { const h = window.location.hash.slice(1); return all.some(t => t.id === h) ? h : 'daily'; };
   const [tab, setTab] = useState(fromHash);
   const [open, setOpen] = useState(false);
   useEffect(() => {
